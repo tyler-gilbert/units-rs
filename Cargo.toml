@@ -1,0 +1,6 @@
+[workspace]
+
+members = [
+    "units-proc-macro",
+    "units"
+]
