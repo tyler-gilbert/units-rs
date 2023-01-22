@@ -26,6 +26,10 @@ struct Frequency(NativeType);
 #[derive(Copy, Clone, SiAddSubtract, SiDisplay)]
 struct Mass(NativeType);
 
+#[derive(Copy, Clone, SiAddSubtract, SiDivide, SiDisplay)]
+#[parameters(lhs_div = Mass, rhs_div = Volume)]
+struct MassDensity(NativeType);
+
 #[derive(Copy, Clone, SiAddSubtract, SiDisplay)]
 struct PlaneAngle(NativeType);
 
@@ -171,22 +175,28 @@ struct ElectricFieldStrength(NativeType);
 #[parameters(lhs_div = ElectricCharge, rhs_div = Volume)]
 struct ElectricChargeDensity(NativeType);
 
-#[derive(Copy, Clone, SiAddSubtract, SiDisplay)]
+#[derive(Copy, Clone, SiAddSubtract, SiDivide, SiDisplay)]
+#[parameters(lhs_div = ElectricCharge, rhs_div = Area)]
 struct ElectricFluxDensity(NativeType);
 
-#[derive(Copy, Clone, SiAddSubtract, SiDisplay)]
+#[derive(Copy, Clone, SiAddSubtract, SiDivide, SiDisplay)]
+#[parameters(lhs_div = Capacitance, rhs_div = Length)]
 struct Permittivity(NativeType);
 
-#[derive(Copy, Clone, SiAddSubtract, SiDisplay)]
+#[derive(Copy, Clone, SiAddSubtract, SiDivide, SiDisplay)]
+#[parameters(lhs_div = Inductance, rhs_div = Length)]
 struct Permeability(NativeType);
 
-#[derive(Copy, Clone, SiAddSubtract, SiDisplay)]
+#[derive(Copy, Clone, SiAddSubtract, SiDivide, SiDisplay)]
+#[parameters(lhs_div = Energy, rhs_div = AmountOfSubstance)]
 struct MolarEnergy(NativeType);
 
-#[derive(Copy, Clone, SiAddSubtract, SiDisplay)]
+#[derive(Copy, Clone, SiAddSubtract, SiDivide, SiDisplay)]
+#[parameters(lhs_div = Energy, rhs_div = AmountOfSubstanceThermodynamicTemperature)]
 struct MolarHeatCapacity(NativeType);
 
-#[derive(Copy, Clone, SiAddSubtract, SiDisplay)]
+#[derive(Copy, Clone, SiAddSubtract, SiDivide, SiDisplay)]
+#[parameters(lhs_div = Power, rhs_div = AreaSolidAngle)]
 struct Radiance(NativeType);
 
 #[derive(Copy, Clone, SiAddSubtract, SiMultiply, SiDisplay)]
@@ -201,13 +211,15 @@ struct LengthThermodynamicTemperature(NativeType);
 #[parameters(lhs_div = Length, rhs_div = LengthThermodynamicTemperature)]
 struct ThermalConductivity(NativeType);
 
-#[derive(Copy, Clone, SiAddSubtract, SiDisplay)]
+#[derive(Copy, Clone, SiAddSubtract, SiMultiply, SiDisplay)]
+#[parameters(lhs_mult = AmountOfSubstance, rhs_mult = ThermodynamicTemperature)]
 struct AmountOfSubstanceThermodynamicTemperature(NativeType);
 
 #[derive(Copy, Clone, SiAddSubtract, SiDisplay)]
 struct AreaSolidAngle(NativeType);
 
-#[derive(Copy, Clone, SiAddSubtract, SiDisplay)]
+#[derive(Copy, Clone, SiAddSubtract, SiInvert, SiDisplay)]
+#[parameters(inv = AmountOfSubstance)]
 struct PerAmountOfSubstance(NativeType);
 
 

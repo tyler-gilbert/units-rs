@@ -374,6 +374,10 @@ fn process_unit(suffix: &str, unit_value: &syn::LitInt, unit: &UnitType) -> Opti
         },
     ];
 
+    if unit.literal_suffix == "" {
+        return None;
+    }
+
     let name: syn::Expr = syn::parse_str(unit.name).expect("failed ot parse");
     let adjust_kilo_default = if unit.name == "Mass" { 0.001 } else { 1.0 };
 
@@ -393,10 +397,10 @@ fn process_unit(suffix: &str, unit_value: &syn::LitInt, unit: &UnitType) -> Opti
     return None;
 }
 
-const UNITS: [UnitType; 56] = [
+const UNITS: &[UnitType] = &[
     UnitType {
         literal_suffix: "g",
-        suffix: "g",
+        suffix: "kg",
         name: "Mass",
         label: "kilograms",
     },
@@ -473,7 +477,7 @@ const UNITS: [UnitType; 56] = [
         label: "meters cubed",
     },
     UnitType {
-        literal_suffix: "",
+        literal_suffix: "mps",
         suffix: "m/s",
         name: "Velocity",
         label: "meters per second",
@@ -730,10 +734,16 @@ const UNITS: [UnitType; 56] = [
         name: "EnergyPerFrequency",
         label: "joules per hertz",
     },
+    UnitType {
+        literal_suffix: "",
+        suffix: "kg/m^3",
+        name: "MassDensity",
+        label: "kilograms per meter cubed",
+    },
 ];
 
 fn find_unit(name: String) -> &'static UnitType {
-    for unit in &UNITS {
+    for unit in UNITS {
         if name == unit.name {
             return &unit;
         }
@@ -781,7 +791,7 @@ impl VisitMut for LiteralReplacer {
                     // get literal suffix
                     // get literal without suffix
                     let lit_no_suffix = LitInt::new(lit.base10_digits(), lit.span());
-                    for unit in &UNITS {
+                    for unit in UNITS {
                         let value = process_unit(lit.suffix(), &lit_no_suffix, &unit);
                         match value {
                             Some(matched_value) => {
