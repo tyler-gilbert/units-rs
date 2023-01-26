@@ -1,12 +1,14 @@
 extern crate units_proc_macro;
 
 use std::fmt;
-use units_proc_macro::{
-    SiAddSubtract, SiDisplay, SiDivide, SiInvert, SiMultiply, SiSquare,
-};
+use units_proc_macro::{SiAddSubtract, SiDisplay, SiDivide, SiInvert, SiMultiply, SiSquare};
 
 // These are used with the macros in units-proc-macro
+#[cfg(feature = "f32")]
+type NativeType = f32;
+#[cfg(not(feature = "f32"))]
 type NativeType = f64;
+
 const SIGNIFICANT_FIGURES: i32 = 6;
 
 // Mechanical
@@ -222,7 +224,6 @@ struct AreaSolidAngle(NativeType);
 #[parameters(inv = AmountOfSubstance)]
 struct PerAmountOfSubstance(NativeType);
 
-
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -230,32 +231,53 @@ mod tests {
     use units_proc_macro::si;
 
     #[test]
+    fn config_operations() {
+        let native_type = if TypeId::of::<NativeType>() == TypeId::of::<f32>() {
+            "f32"
+        } else {
+            "f64"
+        };
+        println!("NativeType: {}", native_type);
+        println!("SIGNIFICANT_FIGURES: {}", SIGNIFICANT_FIGURES);
+    }
+
+    #[test]
     fn temporal_operations() {
         let frequency = 1.0 as NativeType / si!(5s);
         assert_eq!(TypeId::of::<Frequency>(), frequency.type_id());
         let time = 1.0 as NativeType / si!(100Hz);
         assert_eq!(TypeId::of::<Time>(), time.type_id());
-        let (a,b) = (frequency * time, time * frequency);
+        let (a, b) = (frequency * time, time * frequency);
         assert_eq!(TypeId::of::<NativeType>(), a.type_id());
         assert_eq!(TypeId::of::<NativeType>(), b.type_id());
+        let _sum = 1.0 as NativeType / si!(100Hz) + si!(10s);
     }
 
     #[test]
-    fn mechanical_operations() {
+    fn geometric_operations() {
         let length = si!(5m);
         let area = si!(5m) * length;
         assert_eq!(area, (si!(5m) * si!(5m)));
         assert_eq!(TypeId::of::<Area>(), area.type_id());
+        let volume = area * length;
+        assert_eq!(TypeId::of::<Volume>(), volume.type_id());
+        let area2 = volume / length;
+        assert_eq!(TypeId::of::<Area>(), area2.type_id());
+    }
 
+    #[test]
+    fn mechanical_operations() {
         let time = si!(5s);
+        let length = si!(10m);
         let velocity = length / time;
         assert_eq!(TypeId::of::<Velocity>(), velocity.type_id());
         let acceleration = velocity / time;
         assert_eq!(TypeId::of::<Acceleration>(), acceleration.type_id());
+        let v0 = acceleration * time;
+        assert_eq!(TypeId::of::<Velocity>(), v0.type_id());
 
         let acceleration0 = si!(10m / 1s / 1s);
         assert_eq!(TypeId::of::<Acceleration>(), acceleration0.type_id());
-
 
         let force = si!(1kg) * si!(1mps2);
         assert_eq!(TypeId::of::<Force>(), force.type_id());
@@ -269,11 +291,23 @@ mod tests {
 
         let energy = si!(10N * 10m);
         assert_eq!(TypeId::of::<Energy>(), energy.type_id());
-
     }
 
     #[test]
-    fn electric_operations() {
+    fn electrical_operations() {
+        let voltage = si!(10ohms * 10A + 10V);
+        assert_eq!(TypeId::of::<ElectricPotential>(), voltage.type_id());
+        let power = si!(10V * 10A + 100W);
+        assert_eq!(TypeId::of::<Power>(), power.type_id());
+        let energy = si!(100W * 1s + 10J);
+        assert_eq!(TypeId::of::<Energy>(), energy.type_id());
+        let force = energy / si!(10m);
+        assert_eq!(TypeId::of::<Force>(), force.type_id());
+    }
+
+
+    #[test]
+    fn rounding_operations() {
         let power = si!(10V) * si!(5A);
         assert_eq!(TypeId::of::<Power>(), power.type_id());
         assert_eq!(power, si!(50W));

@@ -537,8 +537,8 @@ const UNITS: &[UnitType] = &[
         label: "farads",
     },
     UnitType {
-        literal_suffix: "ohm",
-        suffix: "ohm",
+        literal_suffix: "ohms",
+        suffix: "ohms",
         name: "ElectricResistance",
         label: "ohms",
     },

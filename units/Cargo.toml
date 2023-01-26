@@ -10,3 +10,7 @@ path = "src/lib.rs"
 
 [dependencies]
 units-proc-macro = { path="../units-proc-macro"}
+
+[features]
+default = []
+f32 = []
