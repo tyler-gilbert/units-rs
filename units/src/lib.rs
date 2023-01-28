@@ -15,6 +15,14 @@ const SIGNIFICANT_FIGURES: i32 = 6;
 #[derive(Copy, Clone, SiAddSubtract, SiDisplay)]
 struct Length(NativeType);
 
+#[derive(Copy, Clone, SiAddSubtract, SiSquare, SiDisplay)]
+#[parameters(square = Length)]
+struct Area(NativeType);
+
+#[derive(Copy, Clone, SiAddSubtract, SiMultiply, SiDisplay)]
+#[parameters(lhs_mult = Area, rhs_mult = Length)]
+struct Volume(NativeType);
+
 #[derive(Copy, Clone, SiAddSubtract, SiDisplay)]
 struct OrthogonalLength(NativeType);
 
@@ -37,14 +45,6 @@ struct PlaneAngle(NativeType);
 
 #[derive(Copy, Clone, SiAddSubtract, SiDisplay)]
 struct SolidAngle(NativeType);
-
-#[derive(Copy, Clone, SiAddSubtract, SiSquare, SiDisplay)]
-#[parameters(square = Length)]
-struct Area(NativeType);
-
-#[derive(Copy, Clone, SiAddSubtract, SiMultiply, SiDisplay)]
-#[parameters(lhs_mult = Area, rhs_mult = Length)]
-struct Volume(NativeType);
 
 #[derive(Copy, Clone, SiAddSubtract, SiDivide, SiDisplay)]
 #[parameters(lhs_div = Length, rhs_div = Time)]
@@ -118,6 +118,10 @@ struct Temperature(NativeType);
 #[derive(Copy, Clone, SiAddSubtract, SiDisplay)]
 struct AmountOfSubstance(NativeType);
 
+#[derive(Copy, Clone, SiAddSubtract, SiInvert, SiDisplay)]
+#[parameters(inv = AmountOfSubstance)]
+struct PerAmountOfSubstance(NativeType);
+
 #[derive(Copy, Clone, SiAddSubtract, SiDisplay)]
 struct LuminousIntensity(NativeType);
 
@@ -141,8 +145,8 @@ struct MomentOfForce(NativeType);
 #[parameters(lhs_mult = PlaneAngle, rhs_mult = Frequency, lhs_div = PlaneAngle, rhs_div = Time)]
 struct AngularVelocity(NativeType);
 
-#[derive(Copy, Clone, SiAddSubtract, SiDivide, SiDisplay)]
-#[parameters(lhs_div = AngularVelocity, rhs_div = Time)]
+#[derive(Copy, Clone, SiAddSubtract, SiMultiply, SiDivide ,SiDisplay)]
+#[parameters(lhs_mult = AngularVelocity, rhs_mult = Frequency, lhs_div = AngularVelocity, rhs_div = Time)]
 struct AngularAcceleration(NativeType);
 
 #[derive(Copy, Clone, SiAddSubtract, SiDivide, SiDisplay)]
@@ -174,12 +178,12 @@ struct EnergyDensity(NativeType);
 struct ElectricFieldStrength(NativeType);
 
 #[derive(Copy, Clone, SiAddSubtract, SiDivide, SiDisplay)]
-#[parameters(lhs_div = ElectricCharge, rhs_div = Volume)]
-struct ElectricChargeDensity(NativeType);
-
-#[derive(Copy, Clone, SiAddSubtract, SiDivide, SiDisplay)]
 #[parameters(lhs_div = ElectricCharge, rhs_div = Area)]
 struct ElectricFluxDensity(NativeType);
+
+#[derive(Copy, Clone, SiAddSubtract, SiMultiply, SiDivide, SiDisplay)]
+#[parameters(lhs_mult = ElectricFluxDensity, rhs_mult = Length, lhs_div = ElectricCharge, rhs_div = Volume)]
+struct ElectricChargeDensity(NativeType);
 
 #[derive(Copy, Clone, SiAddSubtract, SiDivide, SiDisplay)]
 #[parameters(lhs_div = Capacitance, rhs_div = Length)]
@@ -193,9 +197,18 @@ struct Permeability(NativeType);
 #[parameters(lhs_div = Energy, rhs_div = AmountOfSubstance)]
 struct MolarEnergy(NativeType);
 
+#[derive(Copy, Clone, SiAddSubtract, SiMultiply, SiDisplay)]
+#[parameters(lhs_mult = AmountOfSubstance, rhs_mult = ThermodynamicTemperature)]
+struct AmountOfSubstanceThermodynamicTemperature(NativeType);
+
+
 #[derive(Copy, Clone, SiAddSubtract, SiDivide, SiDisplay)]
 #[parameters(lhs_div = Energy, rhs_div = AmountOfSubstanceThermodynamicTemperature)]
 struct MolarHeatCapacity(NativeType);
+
+#[derive(Copy, Clone, SiAddSubtract, SiMultiply, SiDisplay)]
+#[parameters(lhs_mult = Area, rhs_mult = SolidAngle)]
+struct AreaSolidAngle(NativeType);
 
 #[derive(Copy, Clone, SiAddSubtract, SiDivide, SiDisplay)]
 #[parameters(lhs_div = Power, rhs_div = AreaSolidAngle)]
@@ -213,22 +226,13 @@ struct LengthThermodynamicTemperature(NativeType);
 #[parameters(lhs_div = Length, rhs_div = LengthThermodynamicTemperature)]
 struct ThermalConductivity(NativeType);
 
-#[derive(Copy, Clone, SiAddSubtract, SiMultiply, SiDisplay)]
-#[parameters(lhs_mult = AmountOfSubstance, rhs_mult = ThermodynamicTemperature)]
-struct AmountOfSubstanceThermodynamicTemperature(NativeType);
-
-#[derive(Copy, Clone, SiAddSubtract, SiDisplay)]
-struct AreaSolidAngle(NativeType);
-
-#[derive(Copy, Clone, SiAddSubtract, SiInvert, SiDisplay)]
-#[parameters(inv = AmountOfSubstance)]
-struct PerAmountOfSubstance(NativeType);
 
 #[cfg(test)]
 mod tests {
     use super::*;
+
     use std::any::{Any, TypeId};
-    use units_proc_macro::si;
+    use units_proc_macro::{si};
 
     #[test]
     fn config_operations() {
@@ -241,69 +245,180 @@ mod tests {
         println!("SIGNIFICANT_FIGURES: {}", SIGNIFICANT_FIGURES);
     }
 
-    #[test]
-    fn temporal_operations() {
-        let frequency = 1.0 as NativeType / si!(5s);
-        assert_eq!(TypeId::of::<Frequency>(), frequency.type_id());
-        let time = 1.0 as NativeType / si!(100Hz);
-        assert_eq!(TypeId::of::<Time>(), time.type_id());
-        let (a, b) = (frequency * time, time * frequency);
-        assert_eq!(TypeId::of::<NativeType>(), a.type_id());
-        assert_eq!(TypeId::of::<NativeType>(), b.type_id());
-        let _sum = 1.0 as NativeType / si!(100Hz) + si!(10s);
+    macro_rules! basic {
+    ($name: ident, $type_name:ident) => {
+            #[test]
+            fn $name() {
+                let v0 = $type_name(5.0 as NativeType);
+                println!("v0 = {}", v0);
+                let mut v1 = v0;
+                assert_eq!(v1, v0);
+                v1 = $type_name(10.0 as NativeType);
+                let mut v2 = v0.clone();
+                assert_eq!(v0, v2);
+                v2 = $type_name(20.0 as NativeType);
+                let v3 = v1 + v2;
+                let v4 = v3 - v0;
+                assert_ne!(v0, v1);
+                assert_eq!(v3, $type_name(30.0 as NativeType));
+                println!("[{},{},{},{},{}]", v0, v1, v2, v3, v4);
+            }
+        }
     }
 
-    #[test]
-    fn geometric_operations() {
-        let length = si!(5m);
-        let area = si!(5m) * length;
-        assert_eq!(area, (si!(5m) * si!(5m)));
-        assert_eq!(TypeId::of::<Area>(), area.type_id());
-        let volume = area * length;
-        assert_eq!(TypeId::of::<Volume>(), volume.type_id());
-        let area2 = volume / length;
-        assert_eq!(TypeId::of::<Area>(), area2.type_id());
+    macro_rules! invert {
+    ($name: ident, $type_name:ident, $inverted_type_name: ident) => {
+            #[test]
+            fn $name() {
+                let v0 = $type_name(5.0 as NativeType);
+                println!("v0 = {}", v0);
+                let v1 = (1.0 as NativeType) / v0;
+                assert_eq!(TypeId::of::<$inverted_type_name>(), v1.type_id());
+                let v2 = (1.0 as NativeType) / v1;
+                assert_eq!(TypeId::of::<$type_name>(), v2.type_id());
+            }
+        }
     }
 
-    #[test]
-    fn mechanical_operations() {
-        let time = si!(5s);
-        let length = si!(10m);
-        let velocity = length / time;
-        assert_eq!(TypeId::of::<Velocity>(), velocity.type_id());
-        let acceleration = velocity / time;
-        assert_eq!(TypeId::of::<Acceleration>(), acceleration.type_id());
-        let v0 = acceleration * time;
-        assert_eq!(TypeId::of::<Velocity>(), v0.type_id());
-
-        let acceleration0 = si!(10m / 1s / 1s);
-        assert_eq!(TypeId::of::<Acceleration>(), acceleration0.type_id());
-
-        let force = si!(1kg) * si!(1mps2);
-        assert_eq!(TypeId::of::<Force>(), force.type_id());
-        assert_eq!(si!(1kg) * si!(1mps2), si!(1N));
-
-        //native mass value is kg
-        let one_kilogram = si!(1kg);
-        assert_eq!(one_kilogram.0.round(), (1.0 as NativeType).round());
-        let one_kilometer = si!(1km);
-        assert_eq!(one_kilometer.0.round(), (1000.0 as NativeType).round());
-
-        let energy = si!(10N * 10m);
-        assert_eq!(TypeId::of::<Energy>(), energy.type_id());
+    macro_rules! divide {
+    ($name: ident, $type_name:ident, $lhs: ident, $rhs: ident) => {
+            #[test]
+            fn $name() {
+                let lhs = $lhs(100.0 as NativeType);
+                let rhs = $rhs(10.0 as NativeType);
+                let v0 = lhs / rhs;
+                assert_eq!(v0, $type_name(10.0 as NativeType));
+                let v1 = rhs * v0;
+                assert_eq!(v1, $lhs(100.0 as NativeType));
+                let v2 = v0 * rhs;
+                assert_eq!(v2, $lhs(100.0 as NativeType));
+            }
+        }
     }
 
-    #[test]
-    fn electrical_operations() {
-        let voltage = si!(10ohms * 10A + 10V);
-        assert_eq!(TypeId::of::<ElectricPotential>(), voltage.type_id());
-        let power = si!(10V * 10A + 100W);
-        assert_eq!(TypeId::of::<Power>(), power.type_id());
-        let energy = si!(100W * 1s + 10J);
-        assert_eq!(TypeId::of::<Energy>(), energy.type_id());
-        let force = energy / si!(10m);
-        assert_eq!(TypeId::of::<Force>(), force.type_id());
+    macro_rules! multiply {
+    ($name: ident, $type_name:ident, $lhs: ident, $rhs: ident) => {
+            #[test]
+            fn $name() {
+                let lhs = $lhs(100.0 as NativeType);
+                let rhs = $rhs(10.0 as NativeType);
+                let v0 = lhs * rhs;
+                assert_eq!(v0, $type_name(1000.0 as NativeType));
+                let v1 = v0 / rhs;
+                assert_eq!(v1, $lhs(100.0 as NativeType));
+                let v2 = v0 / lhs;
+                assert_eq!(v2, $rhs(10.0 as NativeType));
+            }
+        }
     }
+
+    basic!(test_length, Length);
+    basic!(test_area, Area);
+    multiply!(test_multiply_area, Area, Length, Length);
+    basic!(test_volume, Volume);
+    multiply!(test_multiply_volume, Volume, Area, Length);
+    basic!(test_orthogonal_length, OrthogonalLength);
+    basic!(test_time, Time);
+    basic!(test_frequency, Frequency);
+    invert!(test_invert_frequency, Frequency, Time);
+    basic!(test_mass, Mass);
+    basic!(test_mass_density, MassDensity);
+    divide!(test_divide_mass_density, MassDensity, Mass, Volume);
+    basic!(test_plane_angle, PlaneAngle);
+    basic!(test_solid_angle, SolidAngle);
+    basic!(test_velocity, Velocity);
+    divide!(test_multiply_velocity, Velocity, Length, Time);
+    multiply!(test_multiply_velocity_alt0, Length, Time, Velocity);
+    multiply!(test_multiply_velocity_alt1, Length, Velocity, Time);
+    basic!(test_acceleration, Acceleration);
+    divide!(test_divide_acceleration, Acceleration, Velocity, Time);
+    basic!(test_force, Force);
+    multiply!(test_multiply_force, Force, Mass, Acceleration);
+    basic!(test_pressure, Pressure);
+    divide!(test_divide_pressure, Pressure, Force, Area);
+    basic!(test_power, Power);
+    multiply!(test_multiply_power, Power, Energy, Frequency);
+    divide!(test_divide_power, Power, Energy, Time);
+    basic!(test_energy, Energy);
+    multiply!(test_multiply_energy, Energy, Force, Length);
+    basic!(test_energy_per_frequency, EnergyPerFrequency);
+    multiply!(test_multiply_energy_per_frequency, EnergyPerFrequency, Energy, Time);
+    divide!(test_divide_energy_per_frequency, EnergyPerFrequency, Energy, Frequency);
+    basic!(test_electric_potential, ElectricPotential);
+    divide!(test_divide_electric_potential, ElectricPotential, Power, ElectricCurrent);
+    basic!(test_electric_current, ElectricCurrent);
+    basic!(test_electric_charge, ElectricCharge);
+    divide!(test_divide_electric_charge, ElectricCharge, ElectricCurrent, Time);
+    basic!(test_capacitance, Capacitance);
+    divide!(test_divide_capacitance, Capacitance, ElectricCharge, ElectricPotential);
+    basic!(test_electric_resistance, ElectricResistance);
+    divide!(test_divide_electric_resistance, ElectricResistance, ElectricPotential, ElectricCurrent);
+    basic!(test_electric_conductance, ElectricConductance);
+    divide!(test_divide_electric_conductance, ElectricConductance, ElectricCurrent, ElectricPotential);
+    basic!(test_magnetic_flux, MagneticFlux);
+    basic!(test_magnetic_flux_density, MagneticFluxDensity);
+    divide!(test_divide_magnetic_flux_density, MagneticFluxDensity, MagneticFlux, Area);
+    basic!(test_inductance, Inductance);
+    divide!(test_divide_inductance, Inductance, MagneticFlux, ElectricCurrent);
+    basic!(test_thermodynamic_temperature, ThermodynamicTemperature);
+    basic!(test_temperature, Temperature);
+    basic!(test_amount_of_substance, AmountOfSubstance);
+    invert!(test_invert_amount_of_substance, PerAmountOfSubstance, AmountOfSubstance);
+    basic!(test_luminous_intensity, LuminousIntensity);
+    basic!(test_luminous_flux, LuminousFlux);
+    multiply!(test_multiply_luminous_flux, LuminousFlux, LuminousIntensity, SolidAngle);
+    basic!(test_illuminance, Illuminance);
+    divide!(test_divide_illuminance, Illuminance, LuminousIntensity, Area);
+    basic!(test_dynamic_viscosity, DynamicViscosity);
+    multiply!(test_multiply_dynamic_viscosity, DynamicViscosity, Pressure, Time);
+    basic!(test_moment_of_force, MomentOfForce);
+    multiply!(test_multiply_moment_of_force, MomentOfForce, Force, OrthogonalLength);
+    basic!(test_angular_velocity, AngularVelocity);
+    multiply!(test_multiply_angular_velocity, AngularVelocity, PlaneAngle, Frequency);
+    divide!(test_divide_angular_velocity, AngularVelocity, PlaneAngle, Time);
+    basic!(test_angular_acceleration, AngularAcceleration);
+    multiply!(test_multiply_angular_acceleration, AngularAcceleration, AngularVelocity, Frequency);
+    divide!(test_divide_angular_acceleration, AngularAcceleration, AngularVelocity, Time);
+    basic!(test_surface_tension, SurfaceTension);
+    divide!(test_divide_surface_tension, SurfaceTension, Force, Length);
+    basic!(test_heat_flux_density, HeatFluxDensity);
+    divide!(test_divide_heat_flux_density, HeatFluxDensity, Power, Area);
+    basic!(test_heat_capacity, HeatCapacity);
+    divide!(test_divide_heat_capacity, HeatCapacity, Energy, ThermodynamicTemperature);
+    basic!(test_specific_heat_capacity, SpecificHeatCapacity);
+    divide!(test_divide_specific_heat_capacity, SpecificHeatCapacity, Energy, MassThermodynamicTemperature);
+    basic!(test_specific_energy, SpecificEnergy);
+    divide!(test_divide_specific_energy, SpecificEnergy, Energy, Mass);
+    basic!(test_energy_density, EnergyDensity);
+    divide!(test_divide_energy_density, EnergyDensity, Energy, Volume);
+    basic!(test_electric_field_strength, ElectricFieldStrength);
+    divide!(test_divide_electric_field_strength, ElectricFieldStrength, ElectricPotential, Length);
+    basic!(test_electric_flux_density, ElectricFluxDensity);
+    divide!(test_divide_electric_flux_density, ElectricFluxDensity, ElectricCharge, Area);
+    basic!(test_electric_charge_density, ElectricChargeDensity);
+    divide!(test_divide_electric_charge_density, ElectricChargeDensity, ElectricCharge, Volume);
+    multiply!(test_multiply_electric_charge_density, ElectricChargeDensity, ElectricFluxDensity, Length);
+    basic!(test_permittivity, Permittivity);
+    divide!(test_divide_permittivity, Permittivity, Capacitance, Length);
+    basic!(test_permeability, Permeability);
+    divide!(test_divide_permeability, Permeability, Inductance, Length);
+    basic!(test_molar_energy, MolarEnergy);
+    divide!(test_divide_molar_energy, MolarEnergy, Energy, AmountOfSubstance);
+    basic!(test_amount_of_substance_thermodynamic_temperature, AmountOfSubstanceThermodynamicTemperature);
+    multiply!(test_multiply_amount_of_substance_thermodynamic_temperature, AmountOfSubstanceThermodynamicTemperature, AmountOfSubstance, ThermodynamicTemperature);
+    basic!(test_molar_heat_capacity, MolarHeatCapacity);
+    divide!(test_divide_molar_heat_capacity, MolarHeatCapacity, Energy, AmountOfSubstanceThermodynamicTemperature);
+    basic!(test_area_solid_angle, AreaSolidAngle);
+    multiply!(test_multiply_area_solid_angle, AreaSolidAngle, Area, SolidAngle);
+    basic!(test_radiance, Radiance);
+    divide!(test_divide_radiance, Radiance, Power, AreaSolidAngle);
+    basic!(test_mass_thermodynamic_temperature, MassThermodynamicTemperature);
+    multiply!(test_multiply_mass_thermodynamic_temperature, MassThermodynamicTemperature, Mass, ThermodynamicTemperature);
+    basic!(test_length_thermodynamic_temperature, LengthThermodynamicTemperature);
+    multiply!(test_multiply_length_thermodynamic_temperature, LengthThermodynamicTemperature, Length, ThermodynamicTemperature);
+    basic!(test_thermal_conductivity, ThermalConductivity);
+    divide!(test_divide_thermal_conductivity, ThermalConductivity, Length, LengthThermodynamicTemperature);
+
 
 
     #[test]
