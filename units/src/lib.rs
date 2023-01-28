@@ -254,6 +254,10 @@ mod tests {
                 let mut v1 = v0;
                 assert_eq!(v1, v0);
                 v1 = $type_name(10.0 as NativeType);
+                assert!(v0 < v1);
+                assert!(v1 > v0);
+                assert!(v0 <= v1);
+                assert!(v1 >= v0);
                 let mut v2 = v0.clone();
                 assert_eq!(v0, v2);
                 v2 = $type_name(20.0 as NativeType);
@@ -419,11 +423,91 @@ mod tests {
     basic!(test_thermal_conductivity, ThermalConductivity);
     divide!(test_divide_thermal_conductivity, ThermalConductivity, Length, LengthThermodynamicTemperature);
 
+    #[test]
+    fn suffix_operations() {
+        let v0 = si!(1g);
+        assert_eq!(v0, Mass(0.001 as NativeType));
+        let v0 = si!(1kg);
+        assert_eq!(v0, Mass(1.0 as NativeType));
+        assert_eq!(TypeId::of::<Mass>(), v0.type_id());
+        let v0 = si!(1s);
+        assert_eq!(TypeId::of::<Time>(), v0.type_id());
+        let v0 = si!(1A);
+        assert_eq!(TypeId::of::<ElectricCurrent>(), v0.type_id());
+        let v0 = si!(1K);
+        assert_eq!(TypeId::of::<ThermodynamicTemperature>(), v0.type_id());
+        let v0 = si!(1mol);
+        assert_eq!(TypeId::of::<AmountOfSubstance>(), v0.type_id());
+        let v0 = si!(1m);
+        assert_eq!(TypeId::of::<Length>(), v0.type_id());
+        let v0 = si!(1cd);
+        assert_eq!(TypeId::of::<LuminousIntensity>(), v0.type_id());
+        let v0 = si!(1rad);
+        assert_eq!(TypeId::of::<PlaneAngle>(), v0.type_id());
+        let v0 = si!(1sr);
+        assert_eq!(TypeId::of::<SolidAngle>(), v0.type_id());
+        let v0 = si!(1Hz);
+        assert_eq!(TypeId::of::<Frequency>(), v0.type_id());
+        let v0 = si!(1m2);
+        assert_eq!(TypeId::of::<Area>(), v0.type_id());
+        let v0 = si!(1m3);
+        assert_eq!(TypeId::of::<Volume>(), v0.type_id());
+        let v0 = si!(1mps);
+        assert_eq!(TypeId::of::<Velocity>(), v0.type_id());
+        let v0 = si!(1mps2);
+        assert_eq!(TypeId::of::<Acceleration>(), v0.type_id());
+        let v0 = si!(1Pa);
+        assert_eq!(TypeId::of::<Pressure>(), v0.type_id());
+        let v0 = si!(1J);
+        assert_eq!(TypeId::of::<Energy>(), v0.type_id());
+        let v0 = si!(1W);
+        assert_eq!(TypeId::of::<Power>(), v0.type_id());
+        let v0 = si!(1C);
+        assert_eq!(TypeId::of::<ElectricCharge>(), v0.type_id());
+        let v0 = si!(1V);
+        assert_eq!(TypeId::of::<ElectricPotential>(), v0.type_id());
+        let v0 = si!(1F);
+        assert_eq!(TypeId::of::<Capacitance>(), v0.type_id());
+        let v0 = si!(1ohms);
+        assert_eq!(TypeId::of::<ElectricResistance>(), v0.type_id());
+        let v0 = si!(1S);
+        assert_eq!(TypeId::of::<ElectricConductance>(), v0.type_id());
+        let v0 = si!(1Wb);
+        assert_eq!(TypeId::of::<MagneticFlux>(), v0.type_id());
+        let v0 = si!(1T);
+        assert_eq!(TypeId::of::<MagneticFluxDensity>(), v0.type_id());
+        let v0 = si!(1H);
+        assert_eq!(TypeId::of::<Inductance>(), v0.type_id());
+        let v0 = si!(1degreeC);
+        assert_eq!(TypeId::of::<Temperature>(), v0.type_id());
+        let v0 = si!(1lm);
+        assert_eq!(TypeId::of::<LuminousFlux>(), v0.type_id());
+        let v0 = si!(1lx);
+        assert_eq!(TypeId::of::<Illuminance>(), v0.type_id());
+        let v0 = si!(1Pas);
+        assert_eq!(TypeId::of::<DynamicViscosity>(), v0.type_id());
+        let v0 = si!(1Nm);
+        assert_eq!(TypeId::of::<MomentOfForce>(), v0.type_id());
+    }
+
+    #[test]
+    fn modifying_operations() {
+        assert_eq!(Power(0.000_000_000_000_001 as NativeType), si!(1fW));
+        assert_eq!(Power(0.000_000_000_001 as NativeType), si!(1pW));
+        assert_eq!(Power(0.000_000_001 as NativeType), si!(1nW));
+        assert_eq!(Power(0.000_001 as NativeType), si!(1uW));
+        assert_eq!(Power(0.001 as NativeType), si!(1mW));
+        assert_eq!(Power(1.0 as NativeType), si!(1W));
+        assert_eq!(Power(1_000.0 as NativeType), si!(1kW));
+        assert_eq!(Power(1_000_000.0 as NativeType), si!(1MW));
+        assert_eq!(Power(1_000_000_000.0 as NativeType), si!(1GW));
+        assert_eq!(Power(1E12 as NativeType), si!(1TW));
+    }
 
 
     #[test]
     fn rounding_operations() {
-        let power = si!(10V) * si!(5A);
+        let power = si!(50W);
         assert_eq!(TypeId::of::<Power>(), power.type_id());
         assert_eq!(power, si!(50W));
         assert_eq!(power, si!(50000mW));

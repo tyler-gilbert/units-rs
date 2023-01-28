@@ -90,6 +90,22 @@ fn impl_add_subtract_macro(ast: &syn::DeriveInput) -> TokenStream {
             }
         }
 
+        impl std::cmp::PartialOrd for #name {
+            fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
+                self.0.partial_cmp(&other.0)
+            }
+
+            /*
+            fn le(&self, other: #name) -> bool {
+                self.0 < other.0 || self == other
+            }
+
+            fn ge(&self, other: #name) -> bool {
+                self.0 > other.0 || self == other
+            }
+            */
+        }
+
         impl std::ops::Add for #name {
             type Output = Self;
             fn add(self, rhs: Self) -> Self {
@@ -157,7 +173,6 @@ pub fn mult_macro_derive(input: TokenStream) -> TokenStream {
     let rhs = parameters.get_token("rhs_mult");
     gen_multiply(name, lhs, rhs)
 }
-
 
 #[proc_macro_derive(SiMultiplyAlt, attributes(parameters))]
 pub fn mult_alt_macro_derive(input: TokenStream) -> TokenStream {
@@ -391,7 +406,9 @@ fn process_unit(suffix: &str, unit_value: &syn::LitInt, unit: &UnitType) -> Opti
     }
 
     if suffix == unit.literal_suffix {
-        return Some(parse_quote! { #name( #unit_value as NativeType * #adjust_kilo_default as NativeType) });
+        return Some(
+            parse_quote! { #name( #unit_value as NativeType * #adjust_kilo_default as NativeType) },
+        );
     }
 
     return None;
@@ -465,13 +482,13 @@ const UNITS: &[UnitType] = &[
         label: "hertz",
     },
     UnitType {
-        literal_suffix: "",
+        literal_suffix: "m2",
         suffix: "m^2",
         name: "Area",
         label: "meters squared",
     },
     UnitType {
-        literal_suffix: "",
+        literal_suffix: "m3",
         suffix: "m^3",
         name: "Volume",
         label: "meters cubed",
@@ -567,7 +584,7 @@ const UNITS: &[UnitType] = &[
         label: "henry",
     },
     UnitType {
-        literal_suffix: "C",
+        literal_suffix: "degreeC",
         suffix: "C",
         name: "Temperature",
         label: "degrees Celcuis",
@@ -714,7 +731,7 @@ const UNITS: &[UnitType] = &[
         literal_suffix: "",
         suffix: "mol*K",
         name: "AmountOfSubstanceThermodynamicTemperature",
-        label: "moles kelving",
+        label: "moles kelvin",
     },
     UnitType {
         literal_suffix: "",
