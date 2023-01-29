@@ -17,7 +17,7 @@ pub struct Length(NativeType);
 
 #[derive(Copy, Clone, SiAddSubtract, SiSquare, SiDisplay)]
 #[parameters(square = Length)]
-struct Area(NativeType);
+pub struct Area(NativeType);
 
 #[derive(Copy, Clone, SiAddSubtract, SiMultiply, SiDisplay)]
 #[parameters(lhs_mult = Area, rhs_mult = Length)]
