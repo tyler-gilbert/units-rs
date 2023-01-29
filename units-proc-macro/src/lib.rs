@@ -113,6 +113,13 @@ fn impl_add_subtract_macro(ast: &syn::DeriveInput) -> TokenStream {
             }
         }
 
+        impl std::ops::Mul<#name> for NativeType {
+            type Output = #name;
+            fn mul(self, rhs: #name) -> #name {
+               #name(self * rhs.0)
+            }
+        }
+
         impl std::ops::Mul<NativeType> for #name {
             type Output = Self;
             fn mul(self, rhs: NativeType) -> Self {
@@ -124,6 +131,13 @@ fn impl_add_subtract_macro(ast: &syn::DeriveInput) -> TokenStream {
             type Output = Self;
             fn div(self, rhs: NativeType) -> Self {
                Self(self.0 / rhs)
+            }
+        }
+
+        impl std::ops::Div<#name> for #name {
+            type Output = NativeType;
+            fn div(self, rhs: #name) -> NativeType {
+               self.0 / rhs.0
             }
         }
 
@@ -778,7 +792,7 @@ fn impl_display_macro(ast: &syn::DeriveInput) -> TokenStream {
     let gen = quote::quote! {
       impl fmt::Display for #name {
         fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-          write!(f, "{:6} {}", self.0, #label)
+          write!(f, "{} {}", self.0, #label)
         }
       }
 

@@ -262,9 +262,11 @@ mod tests {
                 assert_eq!(v0, v2);
                 v2 = $type_name(20.0 as NativeType);
                 let v3 = v1 + v2;
-                let v4 = v3 - v0;
+                let v4 = (v3 - v0) * (40.0 as NativeType);
                 assert_ne!(v0, v1);
                 assert_eq!(v3, $type_name(30.0 as NativeType));
+                let v5 = v1 / v2;
+                assert_eq!(TypeId::of::<NativeType>(), v5.type_id());
                 println!("[{},{},{},{},{}]", v0, v1, v2, v3, v4);
             }
         }
@@ -520,5 +522,26 @@ mod tests {
         assert_eq!(si!(5mV), si!(5000001nV));
         assert_ne!(si!(5mV), si!(5000010nV));
         assert_ne!(si!(50mV), si!(50000100nV));
+    }
+
+    #[test]
+    fn readme_test(){
+        let length = si!(32m);
+        let duration = si!(10ms);
+        let velocity = length / duration;
+        println!("Velocity: {}", velocity);
+
+        let voltage = si!(10A * 100ohms);
+        println!("Voltage: {}", voltage);
+
+        //doing and ADC conversion
+        let adc_value = 100_u16;
+        let volts_per_bit = si!(4mV);
+        let v_out = (adc_value as NativeType) * volts_per_bit;
+        let r_top = si!(4kohms);
+        let r_bottom = si!(1kohms);
+        //calculate the input voltage before a voltage divider
+        let sensor_voltage = v_out * ((r_top + r_bottom) /  r_bottom);
+        println!("Sensor Voltage: {}", sensor_voltage);
     }
 }
