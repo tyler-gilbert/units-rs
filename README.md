@@ -3,7 +3,7 @@
 This Rust library provides a comprehensive set of tools for working with standard international units (SI units). It includes a wide range of unit types and conversions, as well as support for composite units and unit prefixes. With this library, you can easily work with units such as meters, seconds, joules, and more, in a type-safe and intuitive way.
 
 ```rust
-use units::{si, NativeType};
+use units::{si, NativeType, Length};
 
 fn main(){
     let length = si!(32m);
@@ -32,4 +32,12 @@ Output:
 Velocity: 3200 meters per second
 Voltage: 1000 volts
 Sensor Voltage: 2 volts
+```
+
+## Cargo
+
+```
+[dependencies]
+units = { git = "https://github.com/tyler-gilbert/units-rs", tag = "v0.2.0" }
+units-si = { git = "https://github.com/tyler-gilbert/units-rs", tag = "v0.2.0" }
 ```
