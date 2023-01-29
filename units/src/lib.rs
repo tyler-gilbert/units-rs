@@ -2,7 +2,7 @@
 use std::fmt;
 use units_proc_macro::{SiAddSubtract, SiDisplay, SiDivide, SiInvert, SiMultiply, SiSquare};
 
-mod proc_macro {
+pub mod proc_macro {
     pub use units_proc_macro::si;
 }
 
