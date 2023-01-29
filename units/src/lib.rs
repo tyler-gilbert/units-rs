@@ -1,10 +1,5 @@
-
 use std::fmt;
-use units_proc_macro::{SiAddSubtract, SiDisplay, SiDivide, SiInvert, SiMultiply, SiSquare};
-
-pub mod proc_macro {
-    pub use units_proc_macro::si;
-}
+use units_si::{SiAddSubtract, SiDisplay, SiDivide, SiInvert, SiMultiply, SiSquare};
 
 // These are used with the macros in units-proc-macro
 #[cfg(feature = "f32")]
@@ -235,7 +230,7 @@ mod tests {
     use super::*;
 
     use std::any::{Any, TypeId};
-    use units_proc_macro::{si};
+    use units_si::{si};
 
     #[test]
     fn config_operations() {
