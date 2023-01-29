@@ -13,11 +13,11 @@ pub const SIGNIFICANT_FIGURES: i32 = 6;
 
 // Mechanical
 #[derive(Copy, Clone, SiAddSubtract, SiDisplay)]
-pub struct Length(NativeType);
+pub struct Length(pub NativeType);
 
 #[derive(Copy, Clone, SiAddSubtract, SiSquare, SiDisplay)]
 #[parameters(square = Length)]
-pub struct Area(NativeType);
+pub struct Area(pub NativeType);
 
 #[derive(Copy, Clone, SiAddSubtract, SiMultiply, SiDisplay)]
 #[parameters(lhs_mult = Area, rhs_mult = Length)]
