@@ -1,4 +1,3 @@
-extern crate units_proc_macro;
 
 use std::fmt;
 use units_proc_macro::{SiAddSubtract, SiDisplay, SiDivide, SiInvert, SiMultiply, SiSquare};

@@ -9,7 +9,9 @@ name = "units"
 path = "src/lib.rs"
 
 [dependencies]
-units-proc-macro = { path="../units-proc-macro"}
+#units-proc-macro = { path = "../units-proc-macro" }
+units-proc-macro = { git = "https://github.com/tyler-gilbert/units-rs", branch = "main" }
+
 
 [features]
 default = []
