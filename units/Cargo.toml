@@ -13,4 +13,5 @@ units-proc-macro = { path="../units-proc-macro"}
 
 [features]
 default = []
+# the default type is double precision floating point (f64), use f32 to use single precision
 f32 = []
