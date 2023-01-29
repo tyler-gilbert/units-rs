@@ -2,7 +2,9 @@
 use std::fmt;
 use units_proc_macro::{SiAddSubtract, SiDisplay, SiDivide, SiInvert, SiMultiply, SiSquare};
 
-pub use units_proc_macro::si;
+mod proc_macro {
+    pub use units_proc_macro::si;
+}
 
 // These are used with the macros in units-proc-macro
 #[cfg(feature = "f32")]
