@@ -10,9 +10,13 @@ path = "src/lib.rs"
 
 [dependencies]
 units-si = { path = "../units-si" }
+libm = { version = "0.2" }
+defmt = { version = "0.3", optional = true }
 
 
 [features]
 default = []
 # the default type is double precision floating point (f64), use f32 to use single precision
 f32 = []
+std = []
+use_defmt = ["defmt"]

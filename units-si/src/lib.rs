@@ -78,20 +78,35 @@ pub fn add_subtract_macro_derive(input: TokenStream) -> TokenStream {
 fn impl_add_subtract_macro(ast: &syn::DeriveInput) -> TokenStream {
     let name = &ast.ident;
     let gen = quote::quote! {
-        impl std::cmp::PartialEq for #name {
+        impl core::cmp::PartialEq for #name {
             fn eq(&self, rhs: &Self) -> bool {
-              let lhs_log = self.0.log10().floor() as i32;
-              let rhs_log = rhs.0.log10().floor() as i32;
-              if( lhs_log != rhs_log ){
-                  return false;
-              }
-              let power_of = SIGNIFICANT_FIGURES - lhs_log - 1;
-              (((self.0 - rhs.0) * (10.0 as NativeType).powi(power_of)).round() as i32) == 0
+
+                #[cfg(feature = "f32")]
+                {
+                    let lhs_log = libm::floorf(libm::log10f(self.0)) as i32;
+                    let rhs_log = libm::floorf(libm::log10f(rhs.0)) as i32;
+                    if( lhs_log != rhs_log ){
+                        return false;
+                    }
+                    let power_of = (SIGNIFICANT_FIGURES - lhs_log - 1) as NativeType;
+                    (libm::roundf((self.0 - rhs.0) * libm::powf(10.0 as NativeType, power_of))) as i32 == 0
+                }
+
+                #[cfg(not(feature = "f32"))]
+                {
+                    let lhs_log = libm::floor(libm::log10(self.0)) as i32;
+                    let rhs_log = libm::floor(libm::log10(rhs.0)) as i32;
+                    if( lhs_log != rhs_log ){
+                        return false;
+                    }
+                    let power_of = (SIGNIFICANT_FIGURES - lhs_log - 1) as NativeType;
+                    (libm::round((self.0 - rhs.0) * libm::pow(10.0 as NativeType, power_of))) as i32 == 0
+                }
             }
         }
 
-        impl std::cmp::PartialOrd for #name {
-            fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
+        impl core::cmp::PartialOrd for #name {
+            fn partial_cmp(&self, other: &Self) -> Option<core::cmp::Ordering> {
                 self.0.partial_cmp(&other.0)
             }
 
@@ -106,55 +121,55 @@ fn impl_add_subtract_macro(ast: &syn::DeriveInput) -> TokenStream {
             */
         }
 
-        impl std::ops::Add for #name {
+        impl core::ops::Add for #name {
             type Output = Self;
             fn add(self, rhs: Self) -> Self {
                Self(self.0 + rhs.0)
             }
         }
 
-        impl std::ops::Mul<#name> for NativeType {
+        impl core::ops::Mul<#name> for NativeType {
             type Output = #name;
             fn mul(self, rhs: #name) -> #name {
                #name(self * rhs.0)
             }
         }
 
-        impl std::ops::Mul<NativeType> for #name {
+        impl core::ops::Mul<NativeType> for #name {
             type Output = Self;
             fn mul(self, rhs: NativeType) -> Self {
                Self(self.0 * rhs)
             }
         }
 
-        impl std::ops::Div<NativeType> for #name {
+        impl core::ops::Div<NativeType> for #name {
             type Output = Self;
             fn div(self, rhs: NativeType) -> Self {
                Self(self.0 / rhs)
             }
         }
 
-        impl std::ops::Div<#name> for #name {
+        impl core::ops::Div<#name> for #name {
             type Output = NativeType;
             fn div(self, rhs: #name) -> NativeType {
                self.0 / rhs.0
             }
         }
 
-        impl std::ops::AddAssign for #name {
+        impl core::ops::AddAssign for #name {
             fn add_assign(&mut self, rhs: Self) {
                *self = Self(self.0 + rhs.0);
             }
         }
 
-        impl std::ops::Sub for #name {
+        impl core::ops::Sub for #name {
             type Output = Self;
             fn sub(self, rhs: Self) -> Self {
                Self(self.0 + rhs.0)
             }
         }
 
-        impl std::ops::SubAssign for #name {
+        impl core::ops::SubAssign for #name {
             fn sub_assign(&mut self, rhs: Self) {
                *self = Self(self.0 + rhs.0);
             }
@@ -204,14 +219,14 @@ pub fn mult_alt_macro_derive(input: TokenStream) -> TokenStream {
 
 fn gen_multiply(name: &syn::Ident, lhs: syn::Ident, rhs: syn::Ident) -> TokenStream {
     let gen = quote::quote! {
-        impl std::ops::Mul<#rhs> for #lhs {
+        impl core::ops::Mul<#rhs> for #lhs {
             type Output = #name;
             fn mul(self, rhs: #rhs) -> #name {
                #name(self.0 * rhs.0)
             }
         }
 
-        impl std::ops::Mul<#lhs> for #rhs {
+        impl core::ops::Mul<#lhs> for #rhs {
             type Output = #name;
             fn mul(self, rhs: #lhs) -> #name {
                #name(self.0 * rhs.0)
@@ -219,14 +234,14 @@ fn gen_multiply(name: &syn::Ident, lhs: syn::Ident, rhs: syn::Ident) -> TokenStr
         }
 
 
-        impl std::ops::Div<#rhs> for #name {
+        impl core::ops::Div<#rhs> for #name {
             type Output = #lhs;
             fn div(self, rhs: #rhs) -> #lhs {
                #lhs(self.0 / rhs.0)
             }
         }
 
-        impl std::ops::Div<#lhs> for #name {
+        impl core::ops::Div<#lhs> for #name {
             type Output = #rhs;
             fn div(self, rhs: #lhs) -> #rhs {
                #rhs(self.0 / rhs.0)
@@ -243,14 +258,14 @@ pub fn square_macro_derive(input: TokenStream) -> TokenStream {
     let name = &ast.ident;
     let square = parameters.get_token("square");
     let gen = quote::quote! {
-        impl std::ops::Mul<#square> for #square {
+        impl core::ops::Mul<#square> for #square {
             type Output = #name;
             fn mul(self, square: #square) -> #name {
                #name(self.0 * square.0)
             }
         }
 
-        impl std::ops::Div<#square> for #name {
+        impl core::ops::Div<#square> for #name {
             type Output = #square;
             fn div(self, square: #square) -> #square {
                #square(self.0 / square.0)
@@ -267,14 +282,14 @@ pub fn invert_macro_derive(input: TokenStream) -> TokenStream {
     let name = &ast.ident;
     let inv = parameters.get_token("inv");
     let gen = quote::quote! {
-        impl std::ops::Mul<#inv> for #name {
+        impl core::ops::Mul<#inv> for #name {
             type Output = NativeType;
             fn mul(self, inv: #inv) -> NativeType {
                self.0 * inv.0
             }
         }
 
-        impl std::ops::Mul<#name> for #inv {
+        impl core::ops::Mul<#name> for #inv {
             type Output = NativeType;
             fn mul(self, name: #name) -> NativeType {
                self.0 * name.0
@@ -282,7 +297,7 @@ pub fn invert_macro_derive(input: TokenStream) -> TokenStream {
         }
 
 
-        impl std::ops::Div<#inv> for NativeType {
+        impl core::ops::Div<#inv> for NativeType {
             type Output = #name;
             fn div(self, inv: #inv) -> #name {
                #name(self / inv.0)
@@ -290,7 +305,7 @@ pub fn invert_macro_derive(input: TokenStream) -> TokenStream {
         }
 
 
-        impl std::ops::Div<#name> for NativeType {
+        impl core::ops::Div<#name> for NativeType {
             type Output = #inv;
             fn div(self, name: #name) -> #inv {
                #inv(self / name.0)
@@ -312,28 +327,28 @@ pub fn divide_macro_derive(input: TokenStream) -> TokenStream {
     let lhs = parameters.get_token("lhs_div");
     let rhs = parameters.get_token("rhs_div");
     let gen = quote::quote! {
-        impl std::ops::Div<#rhs> for #lhs {
+        impl core::ops::Div<#rhs> for #lhs {
             type Output = #name;
             fn div(self, rhs: #rhs) -> #name {
                #name(self.0 / rhs.0)
             }
         }
 
-        impl std::ops::Div<#name> for #lhs {
+        impl core::ops::Div<#name> for #lhs {
             type Output = #rhs;
             fn div(self, rhs: #name) -> #rhs {
                #rhs(self.0 / rhs.0)
             }
         }
 
-        impl std::ops::Mul<#rhs> for #name {
+        impl core::ops::Mul<#rhs> for #name {
             type Output = #lhs;
             fn mul(self, rhs: #rhs) -> #lhs {
                #lhs(self.0 * rhs.0)
             }
         }
 
-        impl std::ops::Mul<#name> for #rhs {
+        impl core::ops::Mul<#name> for #rhs {
             type Output = #lhs;
             fn mul(self, rhs: #name) -> #lhs {
                #lhs(self.0 * rhs.0)
@@ -790,12 +805,22 @@ fn impl_display_macro(ast: &syn::DeriveInput) -> TokenStream {
     let suffix: &'static str = current_unit.suffix;
     let literal_suffix = current_unit.literal_suffix;
     let gen = quote::quote! {
-      impl fmt::Display for #name {
-        fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+
+      #[cfg(feature = "use_defmt")]
+      impl defmt::Format for #name {
+        fn format(&self, f: defmt::Formatter<'_>) {
+          defmt::write!(f, "{} {}", self.0, #label);
+        }
+      }
+
+      #[cfg(feature = "std")]
+      impl std::fmt::Display for #name {
+        fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
           write!(f, "{} {}", self.0, #label)
         }
       }
 
+      #[cfg(feature = "std")]
       impl std::fmt::Debug for #name {
         fn fmt(&self, f: &mut std::fmt::Formatter) -> std::result::Result<(), std::fmt::Error> {
           f.debug_struct(stringify!(#name))
