@@ -75,12 +75,56 @@ pub fn add_subtract_macro_derive(input: TokenStream) -> TokenStream {
     impl_add_subtract_macro(&ast)
 }
 
+#[proc_macro_derive(SiRatio)]
+pub fn ratio_macro_derive(input: TokenStream) -> TokenStream {
+    // Construct a representation of Rust code as a syntax tree
+    // that we can manipulate
+    let ast = syn::parse(input).unwrap();
+
+    // Build the trait implementation
+    impl_ratio_macro(&ast)
+}
+
+fn impl_ratio_macro(ast: &syn::DeriveInput) -> TokenStream {
+    let name = &ast.ident;
+    let gen = quote::quote! {
+
+        impl core::ops::Mul<#name> for Decibel {
+            type Output = #name;
+            fn mul(self, rhs: #name) -> #name {
+               #name(self.ratio() * rhs.0)
+            }
+        }
+
+        impl core::ops::Mul<Decibel> for #name {
+            type Output = Self;
+            fn mul(self, rhs: Decibel) -> Self {
+               Self(self.0 * rhs.ratio())
+            }
+        }
+
+        impl core::ops::Mul<#name> for DecibelV {
+            type Output = #name;
+            fn mul(self, rhs: #name) -> #name {
+               #name(self.ratio() * rhs.0)
+            }
+        }
+
+        impl core::ops::Mul<DecibelV> for #name {
+            type Output = Self;
+            fn mul(self, rhs: DecibelV) -> Self {
+               Self(self.0 * rhs.ratio())
+            }
+        }
+    };
+    gen.into()
+}
+
 fn impl_add_subtract_macro(ast: &syn::DeriveInput) -> TokenStream {
     let name = &ast.ident;
     let gen = quote::quote! {
         impl core::cmp::PartialEq for #name {
             fn eq(&self, rhs: &Self) -> bool {
-
                 #[cfg(feature = "f32")]
                 {
                     let lhs_log = libm::floorf(libm::log10f(self.0)) as i32;
@@ -444,6 +488,18 @@ fn process_unit(suffix: &str, unit_value: &syn::LitInt, unit: &UnitType) -> Opti
 }
 
 const UNITS: &[UnitType] = &[
+    UnitType {
+        literal_suffix: "dBV",
+        suffix: "dBV",
+        name: "DecibelV",
+        label: "decibelsV",
+    },
+    UnitType {
+        literal_suffix: "dB",
+        suffix: "dB",
+        name: "Decibel",
+        label: "decibels",
+    },
     UnitType {
         literal_suffix: "g",
         suffix: "kg",

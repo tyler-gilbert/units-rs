@@ -3,7 +3,7 @@
 #[cfg(feature = "std")]
 extern crate std;
 
-use units_si::{SiAddSubtract, SiDisplay, SiDivide, SiInvert, SiMultiply, SiSquare};
+use units_si::{SiAddSubtract, SiDisplay, SiDivide, SiInvert, SiMultiply, SiRatio, SiSquare};
 
 pub use units_si::si;
 
@@ -14,6 +14,38 @@ pub type NativeType = f32;
 pub type NativeType = f64;
 
 pub const SIGNIFICANT_FIGURES: i32 = 6;
+
+//Logarithmic ratio quantities
+
+#[derive(Copy, Clone, SiAddSubtract, SiDisplay)]
+pub struct Decibel(pub NativeType);
+impl Decibel {
+    pub fn ratio(&self) -> NativeType {
+        #[cfg(feature = "f32")]
+        {
+            libm::powf(10.0, self.0 / 10.0)
+        }
+        #[cfg(not(feature = "f32"))]
+        {
+            libm::pow(10.0, self.0 / 10.0)
+        }
+    }
+}
+
+#[derive(Copy, Clone, SiAddSubtract, SiDisplay)]
+pub struct DecibelV(pub NativeType);
+impl DecibelV {
+    pub fn ratio(&self) -> NativeType {
+        #[cfg(feature = "f32")]
+        {
+            libm::powf(10.0, self.0 / 20.0)
+        }
+        #[cfg(not(feature = "f32"))]
+        {
+            libm::pow(10.0, self.0 / 20.0)
+        }
+    }
+}
 
 // Mechanical
 #[derive(Copy, Clone, SiAddSubtract, SiDisplay)]
@@ -62,16 +94,16 @@ pub struct Acceleration(pub NativeType);
 #[parameters(lhs_mult = Mass, rhs_mult = Acceleration)]
 pub struct Force(pub NativeType);
 
-#[derive(Copy, Clone, SiAddSubtract, SiDivide, SiDisplay)]
+#[derive(Copy, Clone, SiAddSubtract, SiRatio, SiDivide, SiDisplay)]
 #[parameters(lhs_div = Force, rhs_div = Area)]
 pub struct Pressure(pub NativeType);
 
 // Electrical
-#[derive(Copy, Clone, SiAddSubtract, SiMultiply, SiDivide, SiDisplay)]
+#[derive(Copy, Clone, SiAddSubtract, SiRatio, SiMultiply, SiDivide, SiDisplay)]
 #[parameters(lhs_mult = Energy, rhs_mult = Frequency, lhs_div = Energy, rhs_div = Time)]
 pub struct Power(pub NativeType);
 
-#[derive(Copy, Clone, SiAddSubtract, SiMultiply, SiDisplay)]
+#[derive(Copy, Clone, SiAddSubtract, SiRatio, SiMultiply, SiDisplay)]
 #[parameters(lhs_mult = Force, rhs_mult = Length)]
 pub struct Energy(pub NativeType);
 
@@ -79,14 +111,14 @@ pub struct Energy(pub NativeType);
 #[parameters(lhs_mult = Energy, rhs_mult = Time, lhs_div = Energy, rhs_div = Frequency)]
 pub struct EnergyPerFrequency(pub NativeType);
 
-#[derive(Copy, Clone, SiAddSubtract, SiDivide, SiDisplay)]
+#[derive(Copy, Clone, SiAddSubtract, SiRatio, SiDivide, SiDisplay)]
 #[parameters(lhs_div = Power, rhs_div = ElectricCurrent)]
 pub struct ElectricPotential(pub NativeType);
 
-#[derive(Copy, Clone, SiAddSubtract, SiDisplay)]
+#[derive(Copy, Clone, SiAddSubtract, SiRatio, SiDisplay)]
 pub struct ElectricCurrent(pub NativeType);
 
-#[derive(Copy, Clone, SiAddSubtract, SiDivide, SiDisplay)]
+#[derive(Copy, Clone, SiAddSubtract, SiRatio, SiDivide, SiDisplay)]
 #[parameters(lhs_div = ElectricCurrent, rhs_div = Time)]
 pub struct ElectricCharge(pub NativeType);
 
@@ -94,7 +126,7 @@ pub struct ElectricCharge(pub NativeType);
 #[parameters(lhs_div = ElectricCharge, rhs_div = ElectricPotential)]
 pub struct Capacitance(pub NativeType);
 
-#[derive(Copy, Clone, SiAddSubtract, SiDivide, SiDisplay)]
+#[derive(Copy, Clone, SiAddSubtract, SiRatio, SiDivide, SiDisplay)]
 #[parameters(lhs_div = ElectricPotential, rhs_div = ElectricCurrent)]
 pub struct ElectricResistance(pub NativeType);
 
@@ -102,10 +134,10 @@ pub struct ElectricResistance(pub NativeType);
 #[parameters(lhs_div = ElectricCurrent, rhs_div = ElectricPotential)]
 pub struct ElectricConductance(pub NativeType);
 
-#[derive(Copy, Clone, SiAddSubtract, SiDisplay)]
+#[derive(Copy, Clone, SiAddSubtract, SiRatio, SiDisplay)]
 pub struct MagneticFlux(pub NativeType);
 
-#[derive(Copy, Clone, SiAddSubtract, SiDivide, SiDisplay)]
+#[derive(Copy, Clone, SiAddSubtract, SiRatio, SiDivide, SiDisplay)]
 #[parameters(lhs_div = MagneticFlux, rhs_div = Area)]
 pub struct MagneticFluxDensity(pub NativeType);
 
@@ -228,6 +260,46 @@ pub struct LengthThermodynamicTemperature(pub NativeType);
 #[derive(Copy, Clone, SiAddSubtract, SiDivide, SiDisplay)]
 #[parameters(lhs_div = Length, rhs_div = LengthThermodynamicTemperature)]
 pub struct ThermalConductivity(pub NativeType);
+
+#[allow(non_upper_case_globals)]
+pub mod constants {
+    use super::*;
+
+    /// Speed of light in a vacuum
+    pub const c: Velocity = Velocity(299_792_458.0 as NativeType);
+    /// Planck constant
+    pub const h: EnergyPerFrequency = EnergyPerFrequency(6.62607015E-34 as NativeType);
+    /// Sound pressure level of 0 dB
+    pub const p0: Pressure = Pressure(2.0E-5 as NativeType);
+    /// Elementary charge
+    pub const e: ElectricCharge = ElectricCharge(1.602176634E-19 as NativeType);
+    /// Boltzmann constant
+    pub const k: HeatCapacity = HeatCapacity(1.380649E-23 as NativeType);
+    /// Avogadro constant
+    pub const N_A: PerAmountOfSubstance = PerAmountOfSubstance(6.02214076E23 as NativeType);
+    /// the luminous efficacy of monochromatic radiation of frequency 540 × 1012 hertz
+    pub const K_cd: LuminousFlux = LuminousFlux(683.0 as NativeType);
+    /// electron mass
+    pub const m_e: Mass = Mass(9.1093837015E-31 as NativeType);
+    /// Proton mass
+    pub const m_p: Mass = Mass(1.67262192369E-27 as NativeType);
+    /// neutron mass
+    pub const m_n: Mass = Mass(1.67492749804E-27 as NativeType);
+    /// muon mass
+    pub const m_mu: Mass = Mass(1.883531627E-28 as NativeType);
+    /// tau mass
+    pub const m_tau: Mass = Mass(3.16754E-27 as NativeType);
+    /// gravity
+    pub const g: Acceleration = Acceleration(9.80665 as NativeType);
+    /// characteristic impedance of vacuum
+    pub const Z_0: ElectricResistance = ElectricResistance(376.730313668 as NativeType);
+    /// Wien wavelength displacement law constant
+    pub const b: LengthThermodynamicTemperature =
+        LengthThermodynamicTemperature(2.897771955E-3 as NativeType);
+    /// Wien entropy displacement law constant
+    pub const b_entropy: LengthThermodynamicTemperature =
+        LengthThermodynamicTemperature(3.002916077E-3 as NativeType);
+}
 
 #[cfg(test)]
 mod tests {
@@ -669,6 +741,17 @@ mod tests {
         assert_eq!(Power(1_000_000.0 as NativeType), si!(1MW));
         assert_eq!(Power(1_000_000_000.0 as NativeType), si!(1GW));
         assert_eq!(Power(1E12 as NativeType), si!(1TW));
+    }
+
+    #[test]
+    fn scalar_operations() {
+        assert_eq!(Power(1.0 as NativeType) * 1000., si!(1kW));
+        assert_eq!(si!(1W * 0dB), si!(1W));
+        assert_eq!(si!(1W) * si!(0dB), si!(1W));
+        assert_eq!(si!(-1. * 3dB) * si!(10W), si!(5011872uW));
+
+        assert_eq!(si!(10W) * Decibel(-3.0), si!(5011872uW));
+        println!("10W * -3dB = {}", Decibel(-3.0) * si!(10W));
     }
 
     #[test]
