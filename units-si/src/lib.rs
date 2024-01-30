@@ -75,51 +75,6 @@ pub fn add_subtract_macro_derive(input: TokenStream) -> TokenStream {
     impl_add_subtract_macro(&ast)
 }
 
-#[proc_macro_derive(SiRatio)]
-pub fn ratio_macro_derive(input: TokenStream) -> TokenStream {
-    // Construct a representation of Rust code as a syntax tree
-    // that we can manipulate
-    let ast = syn::parse(input).unwrap();
-
-    // Build the trait implementation
-    impl_ratio_macro(&ast)
-}
-
-fn impl_ratio_macro(ast: &syn::DeriveInput) -> TokenStream {
-    let name = &ast.ident;
-    let gen = quote::quote! {
-
-        impl core::ops::Mul<#name> for Decibel {
-            type Output = #name;
-            fn mul(self, rhs: #name) -> #name {
-               #name(self.ratio() * rhs.0)
-            }
-        }
-
-        impl core::ops::Mul<Decibel> for #name {
-            type Output = Self;
-            fn mul(self, rhs: Decibel) -> Self {
-               Self(self.0 * rhs.ratio())
-            }
-        }
-
-        impl core::ops::Mul<#name> for DecibelV {
-            type Output = #name;
-            fn mul(self, rhs: #name) -> #name {
-               #name(self.ratio() * rhs.0)
-            }
-        }
-
-        impl core::ops::Mul<DecibelV> for #name {
-            type Output = Self;
-            fn mul(self, rhs: DecibelV) -> Self {
-               Self(self.0 * rhs.ratio())
-            }
-        }
-    };
-    gen.into()
-}
-
 fn impl_add_subtract_macro(ast: &syn::DeriveInput) -> TokenStream {
     let name = &ast.ident;
     let gen = quote::quote! {
@@ -146,6 +101,27 @@ fn impl_add_subtract_macro(ast: &syn::DeriveInput) -> TokenStream {
                     let power_of = (SIGNIFICANT_FIGURES - lhs_log - 1) as NativeType;
                     (libm::round((self.0 - rhs.0) * libm::pow(10.0 as NativeType, power_of))) as i32 == 0
                 }
+            }
+        }
+
+        impl Into<NativeType> for #name {
+            fn into(self) -> NativeType {
+                self.0
+            }
+        }
+
+        impl From<NativeType> for #name {
+            fn from(value: NativeType) -> #name {
+                #name(value)
+            }
+        }
+
+        impl core::ops::Mul<Decibel<#name>> for #name
+        {
+            type Output = #name;
+
+            fn mul(self, rhs: Decibel<#name>) -> #name {
+                #name::from(self.0 * rhs.ratio())
             }
         }
 

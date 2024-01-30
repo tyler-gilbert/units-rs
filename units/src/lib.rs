@@ -3,7 +3,8 @@
 #[cfg(feature = "std")]
 extern crate std;
 
-use units_si::{SiAddSubtract, SiDisplay, SiDivide, SiInvert, SiMultiply, SiRatio, SiSquare};
+use bincode::{Decode, Encode};
+use units_si::{SiAddSubtract, SiDisplay, SiDivide, SiInvert, SiMultiply, SiSquare};
 
 pub use units_si::si;
 
@@ -15,249 +16,309 @@ pub type NativeType = f64;
 
 pub const SIGNIFICANT_FIGURES: i32 = 6;
 
-//Logarithmic ratio quantities
+#[derive(Copy, Clone, Decode, Encode)]
+pub struct Decibel<
+    UnitType: Into<NativeType> + Copy + core::ops::Mul<NativeType, Output = UnitType>,
+> {
+    value: NativeType, //dB ratio value
+    reference: UnitType,
+    multiplier: NativeType,
+}
 
-#[derive(Copy, Clone, SiAddSubtract, SiDisplay)]
-pub struct Decibel(pub NativeType);
-impl Decibel {
+impl<UnitType: Into<NativeType> + Copy + core::ops::Mul<NativeType, Output = UnitType>>
+    Decibel<UnitType>
+{
+    pub fn new_from_raw(value: UnitType, reference: UnitType, multiplier: NativeType) -> Self {
+        let ratio: NativeType = value.into() / reference.into();
+
+        #[cfg(feature = "f32")]
+        let value = multiplier * libm::log10f(ratio);
+        #[cfg(not(feature = "f32"))]
+        let value = multiplier * libm::log10(ratio);
+
+        Self {
+            value,
+            reference,
+            multiplier,
+        }
+    }
+
+    pub fn new(ratio: NativeType, reference: UnitType, multiplier: NativeType) -> Self {
+        Self {
+            value: ratio,
+            reference,
+            multiplier,
+        }
+    }
+
     pub fn ratio(&self) -> NativeType {
         #[cfg(feature = "f32")]
         {
-            libm::powf(10.0, self.0 / 10.0)
+            libm::powf(10.0, self.value / self.multiplier)
         }
         #[cfg(not(feature = "f32"))]
         {
-            libm::pow(10.0, self.0 / 10.0)
+            libm::pow(10.0, self.value / self.multiplier)
+        }
+    }
+
+    pub fn to_units(&self) -> UnitType {
+        self.reference * self.ratio()
+    }
+}
+
+impl<UnitType: Into<NativeType> + Copy + core::ops::Mul<NativeType, Output = UnitType>>
+    core::ops::Add<Decibel<UnitType>> for Decibel<UnitType>
+{
+    type Output = Decibel<UnitType>;
+
+    fn add(self, rhs: Decibel<UnitType>) -> Self::Output {
+        let value = self.value + rhs.value;
+        Self {
+            value,
+            reference: self.reference,
+            multiplier: self.multiplier,
         }
     }
 }
 
-#[derive(Copy, Clone, SiAddSubtract, SiDisplay)]
-pub struct DecibelV(pub NativeType);
-impl DecibelV {
-    pub fn ratio(&self) -> NativeType {
-        #[cfg(feature = "f32")]
-        {
-            libm::powf(10.0, self.0 / 20.0)
+impl<UnitType: Into<NativeType> + Copy + core::ops::Mul<NativeType, Output = UnitType>>
+    core::ops::Sub<Decibel<UnitType>> for Decibel<UnitType>
+{
+    type Output = Decibel<UnitType>;
+
+    fn sub(self, rhs: Decibel<UnitType>) -> Self::Output {
+        let value = self.value - rhs.value;
+        Self {
+            value,
+            reference: self.reference,
+            multiplier: self.multiplier,
         }
-        #[cfg(not(feature = "f32"))]
-        {
-            libm::pow(10.0, self.0 / 20.0)
-        }
+    }
+}
+
+impl<
+        UnitType: Into<NativeType> + From<NativeType> + Copy + core::ops::Mul<NativeType, Output = UnitType>,
+    > core::ops::Mul<UnitType> for Decibel<UnitType>
+{
+    type Output = UnitType;
+
+    fn mul(self, rhs: UnitType) -> UnitType {
+        UnitType::from(self.ratio() * rhs.into())
     }
 }
 
 // Mechanical
-#[derive(Copy, Clone, SiAddSubtract, SiDisplay)]
+#[derive(Copy, Clone, SiAddSubtract, SiDisplay, Decode, Encode)]
 pub struct Length(pub NativeType);
 
-#[derive(Copy, Clone, SiAddSubtract, SiSquare, SiDisplay)]
+#[derive(Copy, Clone, SiAddSubtract, SiSquare, SiDisplay, Decode, Encode)]
 #[parameters(square = Length)]
 pub struct Area(pub NativeType);
 
-#[derive(Copy, Clone, SiAddSubtract, SiMultiply, SiDisplay)]
+#[derive(Copy, Clone, SiAddSubtract, SiMultiply, SiDisplay, Decode, Encode)]
 #[parameters(lhs_mult = Area, rhs_mult = Length)]
 pub struct Volume(pub NativeType);
 
-#[derive(Copy, Clone, SiAddSubtract, SiDisplay)]
+#[derive(Copy, Clone, SiAddSubtract, SiDisplay, Decode, Encode)]
 pub struct OrthogonalLength(pub NativeType);
 
-#[derive(Copy, Clone, SiAddSubtract, SiDisplay)]
+#[derive(Copy, Clone, SiAddSubtract, SiDisplay, Decode, Encode)]
 pub struct Time(pub NativeType);
 
-#[derive(Copy, Clone, SiAddSubtract, SiInvert, SiDisplay)]
+#[derive(Copy, Clone, SiAddSubtract, SiInvert, SiDisplay, Decode, Encode)]
 #[parameters(inv = Time)]
 pub struct Frequency(pub NativeType);
 
-#[derive(Copy, Clone, SiAddSubtract, SiDisplay)]
+#[derive(Copy, Clone, SiAddSubtract, SiDisplay, Decode, Encode)]
 pub struct Mass(pub NativeType);
 
-#[derive(Copy, Clone, SiAddSubtract, SiDivide, SiDisplay)]
+#[derive(Copy, Clone, SiAddSubtract, SiDivide, SiDisplay, Decode, Encode)]
 #[parameters(lhs_div = Mass, rhs_div = Volume)]
 pub struct MassDensity(pub NativeType);
 
-#[derive(Copy, Clone, SiAddSubtract, SiDisplay)]
+#[derive(Copy, Clone, SiAddSubtract, SiDisplay, Decode, Encode)]
 pub struct PlaneAngle(pub NativeType);
 
-#[derive(Copy, Clone, SiAddSubtract, SiDisplay)]
+#[derive(Copy, Clone, SiAddSubtract, SiDisplay, Decode, Encode)]
 pub struct SolidAngle(pub NativeType);
 
-#[derive(Copy, Clone, SiAddSubtract, SiDivide, SiDisplay)]
+#[derive(Copy, Clone, SiAddSubtract, SiDivide, SiDisplay, Decode, Encode)]
 #[parameters(lhs_div = Length, rhs_div = Time)]
 pub struct Velocity(pub NativeType);
 
-#[derive(Copy, Clone, SiAddSubtract, SiDivide, SiDisplay)]
+#[derive(Copy, Clone, SiAddSubtract, SiDivide, SiDisplay, Decode, Encode)]
 #[parameters(lhs_div = Velocity, rhs_div = Time)]
 pub struct Acceleration(pub NativeType);
 
-#[derive(Copy, Clone, SiAddSubtract, SiMultiply, SiDisplay)]
+#[derive(Copy, Clone, SiAddSubtract, SiMultiply, SiDisplay, Decode, Encode)]
 #[parameters(lhs_mult = Mass, rhs_mult = Acceleration)]
 pub struct Force(pub NativeType);
 
-#[derive(Copy, Clone, SiAddSubtract, SiRatio, SiDivide, SiDisplay)]
+#[derive(Copy, Clone, SiAddSubtract, SiDivide, SiDisplay, Decode, Encode)]
 #[parameters(lhs_div = Force, rhs_div = Area)]
 pub struct Pressure(pub NativeType);
 
 // Electrical
-#[derive(Copy, Clone, SiAddSubtract, SiRatio, SiMultiply, SiDivide, SiDisplay)]
+#[derive(Copy, Clone, SiAddSubtract, SiMultiply, SiDivide, SiDisplay, Decode, Encode)]
 #[parameters(lhs_mult = Energy, rhs_mult = Frequency, lhs_div = Energy, rhs_div = Time)]
 pub struct Power(pub NativeType);
 
-#[derive(Copy, Clone, SiAddSubtract, SiRatio, SiMultiply, SiDisplay)]
+#[derive(Copy, Clone, SiAddSubtract, SiMultiply, SiDisplay, Decode, Encode)]
 #[parameters(lhs_mult = Force, rhs_mult = Length)]
 pub struct Energy(pub NativeType);
 
-#[derive(Copy, Clone, SiAddSubtract, SiMultiply, SiDivide, SiDisplay)]
+#[derive(Copy, Clone, SiAddSubtract, SiMultiply, SiDivide, SiDisplay, Decode, Encode)]
 #[parameters(lhs_mult = Energy, rhs_mult = Time, lhs_div = Energy, rhs_div = Frequency)]
 pub struct EnergyPerFrequency(pub NativeType);
 
-#[derive(Copy, Clone, SiAddSubtract, SiRatio, SiDivide, SiDisplay)]
+#[derive(Copy, Clone, SiAddSubtract, SiDivide, SiDisplay, Decode, Encode)]
 #[parameters(lhs_div = Power, rhs_div = ElectricCurrent)]
 pub struct ElectricPotential(pub NativeType);
 
-#[derive(Copy, Clone, SiAddSubtract, SiRatio, SiDisplay)]
+#[derive(Copy, Clone, SiAddSubtract, SiDisplay, Decode, Encode)]
 pub struct ElectricCurrent(pub NativeType);
 
-#[derive(Copy, Clone, SiAddSubtract, SiRatio, SiDivide, SiDisplay)]
+#[derive(Copy, Clone, SiAddSubtract, SiDivide, SiDisplay, Decode, Encode)]
 #[parameters(lhs_div = ElectricCurrent, rhs_div = Time)]
 pub struct ElectricCharge(pub NativeType);
 
-#[derive(Copy, Clone, SiAddSubtract, SiDivide, SiDisplay)]
+#[derive(Copy, Clone, SiAddSubtract, SiDivide, SiDisplay, Decode, Encode)]
 #[parameters(lhs_div = ElectricCharge, rhs_div = ElectricPotential)]
 pub struct Capacitance(pub NativeType);
 
-#[derive(Copy, Clone, SiAddSubtract, SiRatio, SiDivide, SiDisplay)]
+#[derive(Copy, Clone, SiAddSubtract, SiDivide, SiDisplay, Decode, Encode)]
 #[parameters(lhs_div = ElectricPotential, rhs_div = ElectricCurrent)]
 pub struct ElectricResistance(pub NativeType);
 
-#[derive(Copy, Clone, SiAddSubtract, SiDivide, SiDisplay)]
+#[derive(Copy, Clone, SiAddSubtract, SiDivide, SiDisplay, Decode, Encode)]
 #[parameters(lhs_div = ElectricCurrent, rhs_div = ElectricPotential)]
 pub struct ElectricConductance(pub NativeType);
 
-#[derive(Copy, Clone, SiAddSubtract, SiRatio, SiDisplay)]
+#[derive(Copy, Clone, SiAddSubtract, SiDisplay, Decode, Encode)]
 pub struct MagneticFlux(pub NativeType);
 
-#[derive(Copy, Clone, SiAddSubtract, SiRatio, SiDivide, SiDisplay)]
+#[derive(Copy, Clone, SiAddSubtract, SiDivide, SiDisplay, Decode, Encode)]
 #[parameters(lhs_div = MagneticFlux, rhs_div = Area)]
 pub struct MagneticFluxDensity(pub NativeType);
 
-#[derive(Copy, Clone, SiAddSubtract, SiDivide, SiDisplay)]
+#[derive(Copy, Clone, SiAddSubtract, SiDivide, SiDisplay, Decode, Encode)]
 #[parameters(lhs_div = MagneticFlux, rhs_div = ElectricCurrent)]
 pub struct Inductance(pub NativeType);
 
-#[derive(Copy, Clone, SiAddSubtract, SiDisplay)]
+#[derive(Copy, Clone, SiAddSubtract, SiDisplay, Decode, Encode)]
 pub struct ThermodynamicTemperature(pub NativeType);
 
-#[derive(Copy, Clone, SiAddSubtract, SiDisplay)]
+#[derive(Copy, Clone, SiAddSubtract, SiDisplay, Decode, Encode)]
 pub struct Temperature(pub NativeType);
 
-#[derive(Copy, Clone, SiAddSubtract, SiDisplay)]
+#[derive(Copy, Clone, SiAddSubtract, SiDisplay, Decode, Encode)]
 pub struct AmountOfSubstance(pub NativeType);
 
-#[derive(Copy, Clone, SiAddSubtract, SiInvert, SiDisplay)]
+#[derive(Copy, Clone, SiAddSubtract, SiInvert, SiDisplay, Decode, Encode)]
 #[parameters(inv = AmountOfSubstance)]
 pub struct PerAmountOfSubstance(pub NativeType);
 
-#[derive(Copy, Clone, SiAddSubtract, SiDisplay)]
+#[derive(Copy, Clone, SiAddSubtract, SiDisplay, Decode, Encode)]
 pub struct LuminousIntensity(pub NativeType);
 
-#[derive(Copy, Clone, SiAddSubtract, SiMultiply, SiDisplay)]
+#[derive(Copy, Clone, SiAddSubtract, SiMultiply, SiDisplay, Decode, Encode)]
 #[parameters(lhs_mult = LuminousIntensity, rhs_mult = SolidAngle)]
 pub struct LuminousFlux(pub NativeType);
 
-#[derive(Copy, Clone, SiAddSubtract, SiDivide, SiDisplay)]
+#[derive(Copy, Clone, SiAddSubtract, SiDivide, SiDisplay, Decode, Encode)]
 #[parameters(lhs_div = LuminousIntensity, rhs_div = Area)]
 pub struct Illuminance(pub NativeType);
 
-#[derive(Copy, Clone, SiAddSubtract, SiMultiply, SiDisplay)]
+#[derive(Copy, Clone, SiAddSubtract, SiMultiply, SiDisplay, Decode, Encode)]
 #[parameters(lhs_mult = Pressure, rhs_mult = Time)]
 pub struct DynamicViscosity(pub NativeType);
 
-#[derive(Copy, Clone, SiAddSubtract, SiMultiply, SiDisplay)]
+#[derive(Copy, Clone, SiAddSubtract, SiMultiply, SiDisplay, Decode, Encode)]
 #[parameters(lhs_mult = Force, rhs_mult = OrthogonalLength)]
 pub struct MomentOfForce(pub NativeType);
 
-#[derive(Copy, Clone, SiAddSubtract, SiMultiply, SiDivide, SiDisplay)]
+#[derive(Copy, Clone, SiAddSubtract, SiMultiply, SiDivide, SiDisplay, Decode, Encode)]
 #[parameters(lhs_mult = PlaneAngle, rhs_mult = Frequency, lhs_div = PlaneAngle, rhs_div = Time)]
 pub struct AngularVelocity(pub NativeType);
 
-#[derive(Copy, Clone, SiAddSubtract, SiMultiply, SiDivide, SiDisplay)]
+#[derive(Copy, Clone, SiAddSubtract, SiMultiply, SiDivide, SiDisplay, Decode, Encode)]
 #[parameters(lhs_mult = AngularVelocity, rhs_mult = Frequency, lhs_div = AngularVelocity, rhs_div = Time)]
 pub struct AngularAcceleration(pub NativeType);
 
-#[derive(Copy, Clone, SiAddSubtract, SiDivide, SiDisplay)]
+#[derive(Copy, Clone, SiAddSubtract, SiDivide, SiDisplay, Decode, Encode)]
 #[parameters(lhs_div = Force, rhs_div = Length)]
 pub struct SurfaceTension(pub NativeType);
 
-#[derive(Copy, Clone, SiAddSubtract, SiDivide, SiDisplay)]
+#[derive(Copy, Clone, SiAddSubtract, SiDivide, SiDisplay, Decode, Encode)]
 #[parameters(lhs_div = Power, rhs_div = Area)]
 pub struct HeatFluxDensity(pub NativeType);
 
-#[derive(Copy, Clone, SiAddSubtract, SiDivide, SiDisplay)]
+#[derive(Copy, Clone, SiAddSubtract, SiDivide, SiDisplay, Decode, Encode)]
 #[parameters(lhs_div = Energy, rhs_div = ThermodynamicTemperature)]
 pub struct HeatCapacity(pub NativeType);
 
-#[derive(Copy, Clone, SiAddSubtract, SiDivide, SiDisplay)]
+#[derive(Copy, Clone, SiAddSubtract, SiDivide, SiDisplay, Decode, Encode)]
 #[parameters(lhs_div = Energy, rhs_div = MassThermodynamicTemperature)]
 pub struct SpecificHeatCapacity(pub NativeType);
 
-#[derive(Copy, Clone, SiAddSubtract, SiDivide, SiDisplay)]
+#[derive(Copy, Clone, SiAddSubtract, SiDivide, SiDisplay, Decode, Encode)]
 #[parameters(lhs_div = Energy, rhs_div = Mass)]
 pub struct SpecificEnergy(pub NativeType);
 
-#[derive(Copy, Clone, SiAddSubtract, SiDivide, SiDisplay)]
+#[derive(Copy, Clone, SiAddSubtract, SiDivide, SiDisplay, Decode, Encode)]
 #[parameters(lhs_div = Energy, rhs_div = Volume)]
 pub struct EnergyDensity(pub NativeType);
 
-#[derive(Copy, Clone, SiAddSubtract, SiDivide, SiDisplay)]
+#[derive(Copy, Clone, SiAddSubtract, SiDivide, SiDisplay, Decode, Encode)]
 #[parameters(lhs_div = ElectricPotential, rhs_div = Length)]
 pub struct ElectricFieldStrength(pub NativeType);
 
-#[derive(Copy, Clone, SiAddSubtract, SiDivide, SiDisplay)]
+#[derive(Copy, Clone, SiAddSubtract, SiDivide, SiDisplay, Decode, Encode)]
 #[parameters(lhs_div = ElectricCharge, rhs_div = Area)]
 pub struct ElectricFluxDensity(pub NativeType);
 
-#[derive(Copy, Clone, SiAddSubtract, SiMultiply, SiDivide, SiDisplay)]
+#[derive(Copy, Clone, SiAddSubtract, SiMultiply, SiDivide, SiDisplay, Decode, Encode)]
 #[parameters(lhs_mult = ElectricFluxDensity, rhs_mult = Length, lhs_div = ElectricCharge, rhs_div = Volume)]
 pub struct ElectricChargeDensity(pub NativeType);
 
-#[derive(Copy, Clone, SiAddSubtract, SiDivide, SiDisplay)]
+#[derive(Copy, Clone, SiAddSubtract, SiDivide, SiDisplay, Decode, Encode)]
 #[parameters(lhs_div = Capacitance, rhs_div = Length)]
 pub struct Permittivity(pub NativeType);
 
-#[derive(Copy, Clone, SiAddSubtract, SiDivide, SiDisplay)]
+#[derive(Copy, Clone, SiAddSubtract, SiDivide, SiDisplay, Decode, Encode)]
 #[parameters(lhs_div = Inductance, rhs_div = Length)]
 pub struct Permeability(pub NativeType);
 
-#[derive(Copy, Clone, SiAddSubtract, SiDivide, SiDisplay)]
+#[derive(Copy, Clone, SiAddSubtract, SiDivide, SiDisplay, Decode, Encode)]
 #[parameters(lhs_div = Energy, rhs_div = AmountOfSubstance)]
 pub struct MolarEnergy(pub NativeType);
 
-#[derive(Copy, Clone, SiAddSubtract, SiMultiply, SiDisplay)]
+#[derive(Copy, Clone, SiAddSubtract, SiMultiply, SiDisplay, Decode, Encode)]
 #[parameters(lhs_mult = AmountOfSubstance, rhs_mult = ThermodynamicTemperature)]
 pub struct AmountOfSubstanceThermodynamicTemperature(pub NativeType);
 
-#[derive(Copy, Clone, SiAddSubtract, SiDivide, SiDisplay)]
+#[derive(Copy, Clone, SiAddSubtract, SiDivide, SiDisplay, Decode, Encode)]
 #[parameters(lhs_div = Energy, rhs_div = AmountOfSubstanceThermodynamicTemperature)]
 pub struct MolarHeatCapacity(pub NativeType);
 
-#[derive(Copy, Clone, SiAddSubtract, SiMultiply, SiDisplay)]
+#[derive(Copy, Clone, SiAddSubtract, SiMultiply, SiDisplay, Decode, Encode)]
 #[parameters(lhs_mult = Area, rhs_mult = SolidAngle)]
 pub struct AreaSolidAngle(pub NativeType);
 
-#[derive(Copy, Clone, SiAddSubtract, SiDivide, SiDisplay)]
+#[derive(Copy, Clone, SiAddSubtract, SiDivide, SiDisplay, Decode, Encode)]
 #[parameters(lhs_div = Power, rhs_div = AreaSolidAngle)]
 pub struct Radiance(pub NativeType);
 
-#[derive(Copy, Clone, SiAddSubtract, SiMultiply, SiDisplay)]
+#[derive(Copy, Clone, SiAddSubtract, SiMultiply, SiDisplay, Decode, Encode)]
 #[parameters(lhs_mult = Mass, rhs_mult = ThermodynamicTemperature)]
 pub struct MassThermodynamicTemperature(pub NativeType);
 
-#[derive(Copy, Clone, SiAddSubtract, SiMultiply, SiDisplay)]
+#[derive(Copy, Clone, SiAddSubtract, SiMultiply, SiDisplay, Decode, Encode)]
 #[parameters(lhs_mult = Length, rhs_mult = ThermodynamicTemperature)]
 pub struct LengthThermodynamicTemperature(pub NativeType);
 
-#[derive(Copy, Clone, SiAddSubtract, SiDivide, SiDisplay)]
+#[derive(Copy, Clone, SiAddSubtract, SiDivide, SiDisplay, Decode, Encode)]
 #[parameters(lhs_div = Length, rhs_div = LengthThermodynamicTemperature)]
 pub struct ThermalConductivity(pub NativeType);
 
@@ -746,12 +807,11 @@ mod tests {
     #[test]
     fn scalar_operations() {
         assert_eq!(Power(1.0 as NativeType) * 1000., si!(1kW));
-        assert_eq!(si!(1W * 0dB), si!(1W));
-        assert_eq!(si!(1W) * si!(0dB), si!(1W));
-        assert_eq!(si!(-1. * 3dB) * si!(10W), si!(5011872uW));
-
-        assert_eq!(si!(10W) * Decibel(-3.0), si!(5011872uW));
-        println!("10W * -3dB = {}", Decibel(-3.0) * si!(10W));
+        let db = Decibel::new(-3., si!(1W), 10.0);
+        assert_eq!(db * si!(10W), si!(5011872uW));
+        println!("10W * -3dB = {}", si!(10W) * db);
+        let db = Decibel::new_from_raw(si!(5W), si!(1W), 10.0);
+        assert_eq!(db.to_units(), si!(5W));
     }
 
     #[test]
