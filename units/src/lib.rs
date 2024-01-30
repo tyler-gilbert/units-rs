@@ -17,24 +17,40 @@ pub type NativeType = f64;
 pub const SIGNIFICANT_FIGURES: i32 = 6;
 
 #[derive(Copy, Clone, Decode, Encode)]
+pub enum DecibelType {
+    Power,
+    Signal,
+}
+
+impl Into<NativeType> for DecibelType {
+    fn into(self) -> NativeType {
+        match self {
+            DecibelType::Power => 10.0,
+            DecibelType::Signal => 20.0,
+        }
+    }
+}
+
+#[derive(Copy, Clone, Decode, Encode)]
 pub struct Decibel<
     UnitType: Into<NativeType> + Copy + core::ops::Mul<NativeType, Output = UnitType>,
 > {
     value: NativeType, //dB ratio value
     reference: UnitType,
-    multiplier: NativeType,
+    multiplier: DecibelType,
 }
 
 impl<UnitType: Into<NativeType> + Copy + core::ops::Mul<NativeType, Output = UnitType>>
     Decibel<UnitType>
 {
-    pub fn new_from_raw(value: UnitType, reference: UnitType, multiplier: NativeType) -> Self {
+    pub fn new_from_raw(value: UnitType, reference: UnitType, multiplier: DecibelType) -> Self {
         let ratio: NativeType = value.into() / reference.into();
+        let mult: NativeType = multiplier.into();
 
         #[cfg(feature = "f32")]
-        let value = multiplier * libm::log10f(ratio);
+        let value = mult * libm::log10f(ratio);
         #[cfg(not(feature = "f32"))]
-        let value = multiplier * libm::log10(ratio);
+        let value = mult * libm::log10(ratio);
 
         Self {
             value,
@@ -43,7 +59,7 @@ impl<UnitType: Into<NativeType> + Copy + core::ops::Mul<NativeType, Output = Uni
         }
     }
 
-    pub fn new(ratio: NativeType, reference: UnitType, multiplier: NativeType) -> Self {
+    pub fn new(ratio: NativeType, reference: UnitType, multiplier: DecibelType) -> Self {
         Self {
             value: ratio,
             reference,
@@ -52,13 +68,15 @@ impl<UnitType: Into<NativeType> + Copy + core::ops::Mul<NativeType, Output = Uni
     }
 
     pub fn ratio(&self) -> NativeType {
+        let mult: NativeType = self.multiplier.into();
+
         #[cfg(feature = "f32")]
         {
-            libm::powf(10.0, self.value / self.multiplier)
+            libm::powf(10.0, self.value / mult)
         }
         #[cfg(not(feature = "f32"))]
         {
-            libm::pow(10.0, self.value / self.multiplier)
+            libm::pow(10.0, self.value / mult)
         }
     }
 
@@ -807,11 +825,13 @@ mod tests {
     #[test]
     fn scalar_operations() {
         assert_eq!(Power(1.0 as NativeType) * 1000., si!(1kW));
-        let db = Decibel::new(-3., si!(1W), 10.0);
+        let db = Decibel::new(-3., si!(1W), DecibelType::Power);
         assert_eq!(db * si!(10W), si!(5011872uW));
         println!("10W * -3dB = {}", si!(10W) * db);
-        let db = Decibel::new_from_raw(si!(5W), si!(1W), 10.0);
+        let db = Decibel::new_from_raw(si!(5W), si!(1W), DecibelType::Power);
         assert_eq!(db.to_units(), si!(5W));
+        let db = Decibel::new_from_raw(si!(50V), si!(1V), DecibelType::Signal);
+        assert_eq!(db.to_units(), si!(50V));
     }
 
     #[test]
