@@ -3,6 +3,9 @@
 #[cfg(feature = "std")]
 extern crate std;
 
+#[cfg(feature = "std")]
+use serde::{Deserialize, Serialize};
+
 use bincode::{Decode, Encode};
 use units_si::{SiAddSubtract, SiDisplay, SiDivide, SiInvert, SiMultiply, SiSquare};
 
@@ -16,6 +19,7 @@ pub type NativeType = f64;
 
 pub const SIGNIFICANT_FIGURES: i32 = 6;
 
+#[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 #[derive(Copy, Clone, Decode, Encode)]
 pub enum DecibelType {
     Power,
@@ -31,6 +35,7 @@ impl Into<NativeType> for DecibelType {
     }
 }
 
+#[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 #[derive(Copy, Clone, Decode, Encode)]
 pub struct Decibel<
     UnitType: Into<NativeType> + Copy + core::ops::Mul<NativeType, Output = UnitType>,
@@ -127,9 +132,11 @@ impl<
 }
 
 // Mechanical
+#[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 #[derive(Copy, Clone, SiAddSubtract, SiDisplay, Decode, Encode)]
 pub struct Length(pub NativeType);
 
+#[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 #[derive(Copy, Clone, SiAddSubtract, SiSquare, SiDisplay, Decode, Encode)]
 #[parameters(square = Length)]
 pub struct Area(pub NativeType);
@@ -138,204 +145,257 @@ pub struct Area(pub NativeType);
 #[parameters(lhs_mult = Area, rhs_mult = Length)]
 pub struct Volume(pub NativeType);
 
+#[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 #[derive(Copy, Clone, SiAddSubtract, SiDisplay, Decode, Encode)]
 pub struct OrthogonalLength(pub NativeType);
 
+#[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 #[derive(Copy, Clone, SiAddSubtract, SiDisplay, Decode, Encode)]
 pub struct Time(pub NativeType);
 
+#[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 #[derive(Copy, Clone, SiAddSubtract, SiInvert, SiDisplay, Decode, Encode)]
 #[parameters(inv = Time)]
 pub struct Frequency(pub NativeType);
 
+#[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 #[derive(Copy, Clone, SiAddSubtract, SiDisplay, Decode, Encode)]
 pub struct Mass(pub NativeType);
 
+#[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 #[derive(Copy, Clone, SiAddSubtract, SiDivide, SiDisplay, Decode, Encode)]
 #[parameters(lhs_div = Mass, rhs_div = Volume)]
 pub struct MassDensity(pub NativeType);
 
+#[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 #[derive(Copy, Clone, SiAddSubtract, SiDisplay, Decode, Encode)]
 pub struct PlaneAngle(pub NativeType);
 
+#[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 #[derive(Copy, Clone, SiAddSubtract, SiDisplay, Decode, Encode)]
 pub struct SolidAngle(pub NativeType);
 
+#[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 #[derive(Copy, Clone, SiAddSubtract, SiDivide, SiDisplay, Decode, Encode)]
 #[parameters(lhs_div = Length, rhs_div = Time)]
 pub struct Velocity(pub NativeType);
 
+#[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 #[derive(Copy, Clone, SiAddSubtract, SiDivide, SiDisplay, Decode, Encode)]
 #[parameters(lhs_div = Velocity, rhs_div = Time)]
 pub struct Acceleration(pub NativeType);
 
+#[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 #[derive(Copy, Clone, SiAddSubtract, SiMultiply, SiDisplay, Decode, Encode)]
 #[parameters(lhs_mult = Mass, rhs_mult = Acceleration)]
 pub struct Force(pub NativeType);
 
+#[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 #[derive(Copy, Clone, SiAddSubtract, SiDivide, SiDisplay, Decode, Encode)]
 #[parameters(lhs_div = Force, rhs_div = Area)]
 pub struct Pressure(pub NativeType);
 
 // Electrical
+#[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 #[derive(Copy, Clone, SiAddSubtract, SiMultiply, SiDivide, SiDisplay, Decode, Encode)]
 #[parameters(lhs_mult = Energy, rhs_mult = Frequency, lhs_div = Energy, rhs_div = Time)]
 pub struct Power(pub NativeType);
 
+#[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 #[derive(Copy, Clone, SiAddSubtract, SiMultiply, SiDisplay, Decode, Encode)]
 #[parameters(lhs_mult = Force, rhs_mult = Length)]
 pub struct Energy(pub NativeType);
 
+#[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 #[derive(Copy, Clone, SiAddSubtract, SiMultiply, SiDivide, SiDisplay, Decode, Encode)]
 #[parameters(lhs_mult = Energy, rhs_mult = Time, lhs_div = Energy, rhs_div = Frequency)]
 pub struct EnergyPerFrequency(pub NativeType);
 
+#[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 #[derive(Copy, Clone, SiAddSubtract, SiDivide, SiDisplay, Decode, Encode)]
 #[parameters(lhs_div = Power, rhs_div = ElectricCurrent)]
 pub struct ElectricPotential(pub NativeType);
 
+#[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 #[derive(Copy, Clone, SiAddSubtract, SiDisplay, Decode, Encode)]
 pub struct ElectricCurrent(pub NativeType);
 
+#[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 #[derive(Copy, Clone, SiAddSubtract, SiDivide, SiDisplay, Decode, Encode)]
 #[parameters(lhs_div = ElectricCurrent, rhs_div = Time)]
 pub struct ElectricCharge(pub NativeType);
 
+#[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 #[derive(Copy, Clone, SiAddSubtract, SiDivide, SiDisplay, Decode, Encode)]
 #[parameters(lhs_div = ElectricCharge, rhs_div = ElectricPotential)]
 pub struct Capacitance(pub NativeType);
 
+#[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 #[derive(Copy, Clone, SiAddSubtract, SiDivide, SiDisplay, Decode, Encode)]
 #[parameters(lhs_div = ElectricPotential, rhs_div = ElectricCurrent)]
 pub struct ElectricResistance(pub NativeType);
 
+#[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 #[derive(Copy, Clone, SiAddSubtract, SiDivide, SiDisplay, Decode, Encode)]
 #[parameters(lhs_div = ElectricCurrent, rhs_div = ElectricPotential)]
 pub struct ElectricConductance(pub NativeType);
 
+#[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 #[derive(Copy, Clone, SiAddSubtract, SiDisplay, Decode, Encode)]
 pub struct MagneticFlux(pub NativeType);
 
+#[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 #[derive(Copy, Clone, SiAddSubtract, SiDivide, SiDisplay, Decode, Encode)]
 #[parameters(lhs_div = MagneticFlux, rhs_div = Area)]
 pub struct MagneticFluxDensity(pub NativeType);
 
+#[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 #[derive(Copy, Clone, SiAddSubtract, SiDivide, SiDisplay, Decode, Encode)]
 #[parameters(lhs_div = MagneticFlux, rhs_div = ElectricCurrent)]
 pub struct Inductance(pub NativeType);
 
+#[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 #[derive(Copy, Clone, SiAddSubtract, SiDisplay, Decode, Encode)]
 pub struct ThermodynamicTemperature(pub NativeType);
 
+#[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 #[derive(Copy, Clone, SiAddSubtract, SiDisplay, Decode, Encode)]
 pub struct Temperature(pub NativeType);
 
+#[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 #[derive(Copy, Clone, SiAddSubtract, SiDisplay, Decode, Encode)]
 pub struct AmountOfSubstance(pub NativeType);
 
+#[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 #[derive(Copy, Clone, SiAddSubtract, SiInvert, SiDisplay, Decode, Encode)]
 #[parameters(inv = AmountOfSubstance)]
 pub struct PerAmountOfSubstance(pub NativeType);
 
+#[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 #[derive(Copy, Clone, SiAddSubtract, SiDisplay, Decode, Encode)]
 pub struct LuminousIntensity(pub NativeType);
 
+#[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 #[derive(Copy, Clone, SiAddSubtract, SiMultiply, SiDisplay, Decode, Encode)]
 #[parameters(lhs_mult = LuminousIntensity, rhs_mult = SolidAngle)]
 pub struct LuminousFlux(pub NativeType);
 
+#[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 #[derive(Copy, Clone, SiAddSubtract, SiDivide, SiDisplay, Decode, Encode)]
 #[parameters(lhs_div = LuminousIntensity, rhs_div = Area)]
 pub struct Illuminance(pub NativeType);
 
+#[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 #[derive(Copy, Clone, SiAddSubtract, SiMultiply, SiDisplay, Decode, Encode)]
 #[parameters(lhs_mult = Pressure, rhs_mult = Time)]
 pub struct DynamicViscosity(pub NativeType);
 
+#[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 #[derive(Copy, Clone, SiAddSubtract, SiMultiply, SiDisplay, Decode, Encode)]
 #[parameters(lhs_mult = Force, rhs_mult = OrthogonalLength)]
 pub struct MomentOfForce(pub NativeType);
 
+#[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 #[derive(Copy, Clone, SiAddSubtract, SiMultiply, SiDivide, SiDisplay, Decode, Encode)]
 #[parameters(lhs_mult = PlaneAngle, rhs_mult = Frequency, lhs_div = PlaneAngle, rhs_div = Time)]
 pub struct AngularVelocity(pub NativeType);
 
+#[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 #[derive(Copy, Clone, SiAddSubtract, SiMultiply, SiDivide, SiDisplay, Decode, Encode)]
 #[parameters(lhs_mult = AngularVelocity, rhs_mult = Frequency, lhs_div = AngularVelocity, rhs_div = Time)]
 pub struct AngularAcceleration(pub NativeType);
 
+#[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 #[derive(Copy, Clone, SiAddSubtract, SiDivide, SiDisplay, Decode, Encode)]
 #[parameters(lhs_div = Force, rhs_div = Length)]
 pub struct SurfaceTension(pub NativeType);
 
+#[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 #[derive(Copy, Clone, SiAddSubtract, SiDivide, SiDisplay, Decode, Encode)]
 #[parameters(lhs_div = Power, rhs_div = Area)]
 pub struct HeatFluxDensity(pub NativeType);
 
+#[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 #[derive(Copy, Clone, SiAddSubtract, SiDivide, SiDisplay, Decode, Encode)]
 #[parameters(lhs_div = Energy, rhs_div = ThermodynamicTemperature)]
 pub struct HeatCapacity(pub NativeType);
 
+#[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 #[derive(Copy, Clone, SiAddSubtract, SiDivide, SiDisplay, Decode, Encode)]
 #[parameters(lhs_div = Energy, rhs_div = MassThermodynamicTemperature)]
 pub struct SpecificHeatCapacity(pub NativeType);
 
+#[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 #[derive(Copy, Clone, SiAddSubtract, SiDivide, SiDisplay, Decode, Encode)]
 #[parameters(lhs_div = Energy, rhs_div = Mass)]
 pub struct SpecificEnergy(pub NativeType);
 
+#[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 #[derive(Copy, Clone, SiAddSubtract, SiDivide, SiDisplay, Decode, Encode)]
 #[parameters(lhs_div = Energy, rhs_div = Volume)]
 pub struct EnergyDensity(pub NativeType);
 
+#[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 #[derive(Copy, Clone, SiAddSubtract, SiDivide, SiDisplay, Decode, Encode)]
 #[parameters(lhs_div = ElectricPotential, rhs_div = Length)]
 pub struct ElectricFieldStrength(pub NativeType);
 
+#[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 #[derive(Copy, Clone, SiAddSubtract, SiDivide, SiDisplay, Decode, Encode)]
 #[parameters(lhs_div = ElectricCharge, rhs_div = Area)]
 pub struct ElectricFluxDensity(pub NativeType);
 
+#[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 #[derive(Copy, Clone, SiAddSubtract, SiMultiply, SiDivide, SiDisplay, Decode, Encode)]
 #[parameters(lhs_mult = ElectricFluxDensity, rhs_mult = Length, lhs_div = ElectricCharge, rhs_div = Volume)]
 pub struct ElectricChargeDensity(pub NativeType);
 
+#[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 #[derive(Copy, Clone, SiAddSubtract, SiDivide, SiDisplay, Decode, Encode)]
 #[parameters(lhs_div = Capacitance, rhs_div = Length)]
 pub struct Permittivity(pub NativeType);
 
+#[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 #[derive(Copy, Clone, SiAddSubtract, SiDivide, SiDisplay, Decode, Encode)]
 #[parameters(lhs_div = Inductance, rhs_div = Length)]
 pub struct Permeability(pub NativeType);
 
+#[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 #[derive(Copy, Clone, SiAddSubtract, SiDivide, SiDisplay, Decode, Encode)]
 #[parameters(lhs_div = Energy, rhs_div = AmountOfSubstance)]
 pub struct MolarEnergy(pub NativeType);
 
+#[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 #[derive(Copy, Clone, SiAddSubtract, SiMultiply, SiDisplay, Decode, Encode)]
 #[parameters(lhs_mult = AmountOfSubstance, rhs_mult = ThermodynamicTemperature)]
 pub struct AmountOfSubstanceThermodynamicTemperature(pub NativeType);
 
+#[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 #[derive(Copy, Clone, SiAddSubtract, SiDivide, SiDisplay, Decode, Encode)]
 #[parameters(lhs_div = Energy, rhs_div = AmountOfSubstanceThermodynamicTemperature)]
 pub struct MolarHeatCapacity(pub NativeType);
 
+#[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 #[derive(Copy, Clone, SiAddSubtract, SiMultiply, SiDisplay, Decode, Encode)]
 #[parameters(lhs_mult = Area, rhs_mult = SolidAngle)]
 pub struct AreaSolidAngle(pub NativeType);
 
+#[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 #[derive(Copy, Clone, SiAddSubtract, SiDivide, SiDisplay, Decode, Encode)]
 #[parameters(lhs_div = Power, rhs_div = AreaSolidAngle)]
 pub struct Radiance(pub NativeType);
 
+#[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 #[derive(Copy, Clone, SiAddSubtract, SiMultiply, SiDisplay, Decode, Encode)]
 #[parameters(lhs_mult = Mass, rhs_mult = ThermodynamicTemperature)]
 pub struct MassThermodynamicTemperature(pub NativeType);
 
+#[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 #[derive(Copy, Clone, SiAddSubtract, SiMultiply, SiDisplay, Decode, Encode)]
 #[parameters(lhs_mult = Length, rhs_mult = ThermodynamicTemperature)]
 pub struct LengthThermodynamicTemperature(pub NativeType);
 
+#[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 #[derive(Copy, Clone, SiAddSubtract, SiDivide, SiDisplay, Decode, Encode)]
 #[parameters(lhs_div = Length, rhs_div = LengthThermodynamicTemperature)]
 pub struct ThermalConductivity(pub NativeType);
