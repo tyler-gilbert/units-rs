@@ -12,7 +12,7 @@ path = "src/lib.rs"
 [dependencies]
 syn = { version = "1.0", features = ["visit-mut"] }
 quote = "1.0"
-bincode = { version = "2.0.0-rc.3", features = [
+bincode = { version = "2.0.1", features = [
     "derive",
 ], default-features = false }
 serde = { version = "1.0", optional = true }
