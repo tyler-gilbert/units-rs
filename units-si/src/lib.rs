@@ -1,7 +1,6 @@
 extern crate proc_macro;
 
 use proc_macro::TokenStream;
-use quote;
 use quote::ToTokens;
 use syn::parse::{Parse, ParseStream};
 use syn::spanned::Spanned;
@@ -426,15 +425,15 @@ fn process_unit(suffix: &str, unit_value: &syn::LitInt, unit: &UnitType) -> Opti
         },
         ModifierType {
             prefix: "M",
-            multiplier: 1000_000.0,
+            multiplier: 1_000_000.0,
         },
         ModifierType {
             prefix: "G",
-            multiplier: 1000_000_000.0,
+            multiplier: 1_000_000_000.0,
         },
         ModifierType {
             prefix: "T",
-            multiplier: 1000_000_000_000.0,
+            multiplier: 1_000_000_000_000.0,
         },
     ];
 
