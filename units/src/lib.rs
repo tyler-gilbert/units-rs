@@ -440,6 +440,7 @@ pub mod constants {
         LengthThermodynamicTemperature(3.002916077E-3 as NativeType);
 }
 
+#[cfg(feature = "std")]
 #[cfg(test)]
 mod tests {
     use super::*;

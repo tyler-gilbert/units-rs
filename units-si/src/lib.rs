@@ -184,13 +184,13 @@ fn impl_add_subtract_macro(ast: &syn::DeriveInput) -> TokenStream {
         impl core::ops::Sub for #name {
             type Output = Self;
             fn sub(self, rhs: Self) -> Self {
-               Self(self.0 + rhs.0)
+               Self(self.0 - rhs.0)
             }
         }
 
         impl core::ops::SubAssign for #name {
             fn sub_assign(&mut self, rhs: Self) {
-               *self = Self(self.0 + rhs.0);
+               *self = Self(self.0 - rhs.0);
             }
         }
     };
