@@ -115,15 +115,6 @@ fn impl_add_subtract_macro(ast: &syn::DeriveInput) -> TokenStream {
             }
         }
 
-        impl core::ops::Mul<Decibel<#name>> for #name
-        {
-            type Output = #name;
-
-            fn mul(self, rhs: Decibel<#name>) -> #name {
-                #name::from(self.0 * rhs.ratio())
-            }
-        }
-
         impl core::cmp::PartialOrd for #name {
             fn partial_cmp(&self, other: &Self) -> Option<core::cmp::Ordering> {
                 self.0.partial_cmp(&other.0)
@@ -147,31 +138,17 @@ fn impl_add_subtract_macro(ast: &syn::DeriveInput) -> TokenStream {
             }
         }
 
-        impl core::ops::Mul<#name> for NativeType {
-            type Output = #name;
-            fn mul(self, rhs: #name) -> #name {
-               #name(self * rhs.0)
-            }
-        }
-
-        impl core::ops::Mul<NativeType> for #name {
+        impl core::ops::Mul<Scalar> for #name {
             type Output = Self;
-            fn mul(self, rhs: NativeType) -> Self {
-               Self(self.0 * rhs)
-            }
-        }
-
-        impl core::ops::Div<NativeType> for #name {
-            type Output = Self;
-            fn div(self, rhs: NativeType) -> Self {
-               Self(self.0 / rhs)
+            fn mul(self, rhs: Scalar) -> Self {
+               Self(self.0 * rhs.0)
             }
         }
 
         impl core::ops::Div<#name> for #name {
-            type Output = NativeType;
-            fn div(self, rhs: #name) -> NativeType {
-               self.0 / rhs.0
+            type Output = Scalar;
+            fn div(self, rhs: #name) -> Scalar {
+               Scalar(self.0 / rhs.0)
             }
         }
 
@@ -193,6 +170,46 @@ fn impl_add_subtract_macro(ast: &syn::DeriveInput) -> TokenStream {
                *self = Self(self.0 - rhs.0);
             }
         }
+    };
+    gen.into()
+}
+
+#[proc_macro_derive(SiMultiplyDivideScalar)]
+pub fn add_subtract_no_divide_macro_derive(input: TokenStream) -> TokenStream {
+    // Construct a representation of Rust code as a syntax tree
+    // that we can manipulate
+    let ast = syn::parse(input).unwrap();
+
+    // Build the trait implementation
+    impl_multiply_divide_scalar_macro(&ast)
+}
+
+fn impl_multiply_divide_scalar_macro(ast: &syn::DeriveInput) -> TokenStream {
+    let name = &ast.ident;
+    let gen = quote::quote! {
+
+        impl core::ops::Mul<Decibel<#name>> for #name
+        {
+            type Output = Self;
+            fn mul(self, rhs: Decibel<#name>) -> Self {
+                Self::from(self * rhs.ratio())
+            }
+        }
+
+        impl core::ops::Mul<#name> for Scalar {
+            type Output = #name;
+            fn mul(self, rhs: #name) -> #name {
+               #name(self.0 * rhs.0)
+            }
+        }
+
+        impl core::ops::Div<Scalar> for #name {
+            type Output = #name;
+            fn div(self, rhs: Scalar) -> #name {
+               #name(self.0 / rhs.0)
+            }
+        }
+
     };
     gen.into()
 }
@@ -302,32 +319,32 @@ pub fn invert_macro_derive(input: TokenStream) -> TokenStream {
     let inv = parameters.get_token("inv");
     let gen = quote::quote! {
         impl core::ops::Mul<#inv> for #name {
-            type Output = NativeType;
-            fn mul(self, inv: #inv) -> NativeType {
-               self.0 * inv.0
+            type Output = Scalar;
+            fn mul(self, inv: #inv) -> Scalar {
+               Scalar(self.0 * inv.0)
             }
         }
 
         impl core::ops::Mul<#name> for #inv {
-            type Output = NativeType;
-            fn mul(self, name: #name) -> NativeType {
-               self.0 * name.0
+            type Output = Scalar;
+            fn mul(self, name: #name) -> Scalar {
+               Scalar(self.0 * name.0)
             }
         }
 
 
-        impl core::ops::Div<#inv> for NativeType {
+        impl core::ops::Div<#inv> for Scalar {
             type Output = #name;
             fn div(self, inv: #inv) -> #name {
-               #name(self / inv.0)
+               #name(self.0 / inv.0)
             }
         }
 
 
-        impl core::ops::Div<#name> for NativeType {
+        impl core::ops::Div<#name> for Scalar {
             type Output = #inv;
             fn div(self, name: #name) -> #inv {
-               #inv(self / name.0)
+               #inv(self.0 / name.0)
             }
         }
 
@@ -463,6 +480,12 @@ fn process_unit(suffix: &str, unit_value: &syn::LitInt, unit: &UnitType) -> Opti
 }
 
 const UNITS: &[UnitType] = &[
+    UnitType {
+        literal_suffix: "scalar",
+        suffix: "scalar",
+        name: "Scalar",
+        label: "scalar",
+    },
     UnitType {
         literal_suffix: "dBV",
         suffix: "dBV",
@@ -825,7 +848,7 @@ fn find_unit(name: String) -> &'static UnitType {
             return &unit;
         }
     }
-    panic!("not unit named {} was found", name);
+    panic!("no unit named {} was found", name);
 }
 
 fn impl_display_macro(ast: &syn::DeriveInput) -> TokenStream {
