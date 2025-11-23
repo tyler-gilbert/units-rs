@@ -3,15 +3,13 @@
 #[cfg(feature = "std")]
 extern crate std;
 
-#[cfg(feature = "std")]
-use serde::{Deserialize, Serialize};
+pub mod imperial;
+mod test;
 
 use bincode::{Decode, Encode};
 use units_si::{
     SiAddSubtract, SiDisplay, SiDivide, SiInvert, SiMultiply, SiMultiplyDivideScalar, SiSquare,
 };
-
-pub use units_si::si;
 
 // These are used with the macros in units-proc-macro
 #[cfg(feature = "f32")]
@@ -19,9 +17,8 @@ pub type NativeType = f32;
 #[cfg(not(feature = "f32"))]
 pub type NativeType = f64;
 
-pub const SIGNIFICANT_FIGURES: i32 = 6;
+pub const SIGNIFICANT_FIGURES: i32 = 12;
 
-#[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 #[derive(Copy, Clone, Decode, Encode)]
 pub enum DecibelType {
     Power,
@@ -37,7 +34,6 @@ impl Into<NativeType> for DecibelType {
     }
 }
 
-#[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 #[derive(Copy, Clone, Decode, Encode)]
 pub struct Decibel<UnitType: Into<NativeType> + Copy + core::ops::Mul<Scalar, Output = UnitType>> {
     value: NativeType, //dB ratio value
@@ -77,11 +73,11 @@ impl<UnitType: Into<NativeType> + Copy + core::ops::Mul<Scalar, Output = UnitTyp
 
         #[cfg(feature = "f32")]
         {
-            Scalar(libm::powf(10.0, self.value / mult))
+            Scalar::from(libm::powf(10.0, self.value / mult))
         }
         #[cfg(not(feature = "f32"))]
         {
-            Scalar(libm::pow(10.0, self.value / mult))
+            Scalar::from(libm::pow(10.0, self.value / mult))
         }
     }
 
@@ -127,175 +123,224 @@ impl<
     type Output = UnitType;
 
     fn mul(self, rhs: UnitType) -> UnitType {
-        UnitType::from(self.ratio().0 * rhs.into())
+        UnitType::from(self.ratio().native * rhs.into())
     }
 }
 
 // Unitless
-#[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 #[derive(Copy, Clone, SiAddSubtract, SiDisplay, Decode, Encode)]
-pub struct Scalar(pub NativeType);
+pub struct Scalar {
+    native: NativeType,
+}
 
 impl Scalar {
     pub fn sqrt(&self) -> Self {
         #[cfg(feature = "f32")]
         {
-            Self(libm::sqrtf(self.0))
+            Self::from(libm::sqrtf(self.native))
         }
 
         #[cfg(not(feature = "f32"))]
         {
-            Self(libm::sqrt(self.0))
+            Self::from(libm::sqrt(self.native))
         }
     }
 
     pub fn atan2(&self, other: Scalar) -> Self {
         #[cfg(feature = "f32")]
         {
-            Self(libm::atan2f(self.0, other.0))
+            Self::from(libm::atan2f(self.native, other.native))
         }
 
         #[cfg(not(feature = "f32"))]
         {
-            Self(libm::atan2(self.0, other.0))
+            Self::from(libm::atan2(self.native, other.native))
         }
     }
 
     pub fn log(&self) -> Self {
         #[cfg(feature = "f32")]
         {
-            Self(libm::logf(self.0))
+            Self::from(libm::logf(self.native))
         }
 
         #[cfg(not(feature = "f32"))]
         {
-            Self(libm::log(self.0))
+            Self::from(libm::log(self.native))
         }
     }
 }
 
 // Mechanical
-#[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
-#[derive(Copy, Clone, SiAddSubtract, SiMultiplyDivideScalar, SiDisplay, Decode, Encode)]
-pub struct Length(pub NativeType);
 
-#[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
+#[derive(Copy, Clone, SiAddSubtract, SiMultiplyDivideScalar, SiDisplay, Decode, Encode)]
+pub struct Length {
+    native: NativeType,
+}
+
+#[derive(
+    Copy, Clone, SiAddSubtract, SiMultiplyDivideScalar, SiInvert, SiDisplay, Decode, Encode,
+)]
+#[parameters(inv = Length)]
+pub struct LengthInverse {
+    native: NativeType,
+}
+
 #[derive(
     Copy, Clone, SiAddSubtract, SiMultiplyDivideScalar, SiSquare, SiDisplay, Decode, Encode,
 )]
 #[parameters(square = Length)]
-pub struct Area(pub NativeType);
-
-impl Area {
-    pub fn sqrt(&self) -> Length {
-        #[cfg(feature = "f32")]
-        {
-            Length(libm::sqrtf(self.0))
-        }
-
-        #[cfg(not(feature = "f32"))]
-        {
-            Length(libm::sqrt(self.0))
-        }
-    }
+pub struct Area {
+    native: NativeType,
 }
 
 #[derive(
     Copy, Clone, SiAddSubtract, SiMultiplyDivideScalar, SiMultiply, SiDisplay, Decode, Encode,
 )]
 #[parameters(lhs_mult = Area, rhs_mult = Length)]
-pub struct Volume(pub NativeType);
+pub struct Volume {
+    native: NativeType,
+}
 
-#[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 #[derive(Copy, Clone, SiAddSubtract, SiMultiplyDivideScalar, SiDisplay, Decode, Encode)]
-pub struct OrthogonalLength(pub NativeType);
+pub struct OrthogonalLength {
+    native: NativeType,
+}
 
-#[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
+impl From<Length> for OrthogonalLength {
+    fn from(value: Length) -> OrthogonalLength {
+        OrthogonalLength::from(value.native)
+    }
+}
+
 #[derive(Copy, Clone, SiAddSubtract, SiMultiplyDivideScalar, SiDisplay, Decode, Encode)]
-pub struct Time(pub NativeType);
+pub struct Time {
+    native: NativeType,
+}
 
-#[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 #[derive(
     Copy, Clone, SiAddSubtract, SiMultiplyDivideScalar, SiInvert, SiDisplay, Decode, Encode,
 )]
 #[parameters(inv = Time)]
-pub struct Frequency(pub NativeType);
+pub struct Frequency {
+    native: NativeType,
+}
 
-#[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
+#[derive(
+    Copy, Clone, SiAddSubtract, SiMultiplyDivideScalar, SiSquare, SiDisplay, Decode, Encode,
+)]
+#[parameters(square = Frequency)]
+pub struct FrequencySquared {
+    native: NativeType,
+}
+
 #[derive(Copy, Clone, SiAddSubtract, SiMultiplyDivideScalar, SiDisplay, Decode, Encode)]
-pub struct Mass(pub NativeType);
+pub struct Mass {
+    native: NativeType,
+}
 
-#[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 #[derive(
     Copy, Clone, SiAddSubtract, SiMultiplyDivideScalar, SiDivide, SiDisplay, Decode, Encode,
 )]
 #[parameters(lhs_div = Mass, rhs_div = Volume)]
-pub struct MassDensity(pub NativeType);
+pub struct MassDensity {
+    native: NativeType,
+}
 
-#[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 #[derive(Copy, Clone, SiAddSubtract, SiMultiplyDivideScalar, SiDisplay, Decode, Encode)]
-pub struct PlaneAngle(pub NativeType);
+pub struct PlaneAngle {
+    native: NativeType,
+}
 
 impl PlaneAngle {
     pub fn sin(&self) -> Scalar {
         #[cfg(feature = "f32")]
         {
-            Scalar(libm::sinf(self.0))
+            Scalar::from(libm::sinf(self.native))
         }
 
         #[cfg(not(feature = "f32"))]
         {
-            Scalar(libm::sin(self.0))
+            Scalar::from(libm::sin(self.native))
         }
     }
 
     pub fn cos(&self) -> Scalar {
         #[cfg(feature = "f32")]
         {
-            Scalar(libm::cosf(self.0))
+            Scalar::from(libm::cosf(self.native))
         }
 
         #[cfg(not(feature = "f32"))]
         {
-            Scalar(libm::cos(self.0))
+            Scalar::from(libm::cos(self.native))
         }
     }
 }
 
-#[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
-#[derive(Copy, Clone, SiAddSubtract, SiMultiplyDivideScalar, SiDisplay, Decode, Encode)]
-pub struct SolidAngle(pub NativeType);
+#[derive(
+    Copy, Clone, SiAddSubtract, SiMultiplyDivideScalar, SiInvert, SiDisplay, Decode, Encode,
+)]
+#[parameters(inv = PlaneAngle)]
+pub struct PlaneAngleInverse {
+    native: NativeType,
+}
 
-#[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
+#[derive(Copy, Clone, SiAddSubtract, SiMultiplyDivideScalar, SiDisplay, Decode, Encode)]
+pub struct SolidAngle {
+    native: NativeType,
+}
+
 #[derive(
     Copy, Clone, SiAddSubtract, SiMultiplyDivideScalar, SiDivide, SiDisplay, Decode, Encode,
 )]
 #[parameters(lhs_div = Length, rhs_div = Time)]
-pub struct Velocity(pub NativeType);
+pub struct Velocity {
+    native: NativeType,
+}
 
-#[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
+#[derive(
+    Copy, Clone, SiAddSubtract, SiMultiplyDivideScalar, SiSquare, SiDisplay, Decode, Encode,
+)]
+#[parameters(square = Velocity)]
+pub struct VelocitySquared {
+    native: NativeType,
+}
+
 #[derive(
     Copy, Clone, SiAddSubtract, SiMultiplyDivideScalar, SiDivide, SiDisplay, Decode, Encode,
 )]
 #[parameters(lhs_div = Velocity, rhs_div = Time)]
-pub struct Acceleration(pub NativeType);
+pub struct Acceleration {
+    native: NativeType,
+}
 
-#[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
+#[derive(
+    Copy, Clone, SiAddSubtract, SiMultiplyDivideScalar, SiDivide, SiDisplay, Decode, Encode,
+)]
+#[parameters(lhs_div = Acceleration, rhs_div = Time)]
+pub struct Jerk {
+    native: NativeType,
+}
+
 #[derive(
     Copy, Clone, SiAddSubtract, SiMultiplyDivideScalar, SiMultiply, SiDisplay, Decode, Encode,
 )]
 #[parameters(lhs_mult = Mass, rhs_mult = Acceleration)]
-pub struct Force(pub NativeType);
+pub struct Force {
+    native: NativeType,
+}
 
-#[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 #[derive(
     Copy, Clone, SiAddSubtract, SiMultiplyDivideScalar, SiDivide, SiDisplay, Decode, Encode,
 )]
 #[parameters(lhs_div = Force, rhs_div = Area)]
-pub struct Pressure(pub NativeType);
+pub struct Pressure {
+    native: NativeType,
+}
 
 // Electrical
-#[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
+
 #[derive(
     Copy,
     Clone,
@@ -308,16 +353,18 @@ pub struct Pressure(pub NativeType);
     Encode,
 )]
 #[parameters(lhs_mult = Energy, rhs_mult = Frequency, lhs_div = Energy, rhs_div = Time)]
-pub struct Power(pub NativeType);
+pub struct Power {
+    native: NativeType,
+}
 
-#[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 #[derive(
     Copy, Clone, SiAddSubtract, SiMultiplyDivideScalar, SiMultiply, SiDisplay, Decode, Encode,
 )]
 #[parameters(lhs_mult = Force, rhs_mult = Length)]
-pub struct Energy(pub NativeType);
+pub struct Energy {
+    native: NativeType,
+}
 
-#[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 #[derive(
     Copy,
     Clone,
@@ -330,249 +377,303 @@ pub struct Energy(pub NativeType);
     Encode,
 )]
 #[parameters(lhs_mult = Energy, rhs_mult = Time, lhs_div = Energy, rhs_div = Frequency)]
-pub struct EnergyPerFrequency(pub NativeType);
+pub struct EnergyPerFrequency {
+    native: NativeType,
+}
 
-#[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 #[derive(
     Copy, Clone, SiAddSubtract, SiMultiplyDivideScalar, SiDivide, SiDisplay, Decode, Encode,
 )]
 #[parameters(lhs_div = Power, rhs_div = ElectricCurrent)]
-pub struct ElectricPotential(pub NativeType);
+pub struct ElectricPotential {
+    native: NativeType,
+}
 
-#[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 #[derive(Copy, Clone, SiAddSubtract, SiMultiplyDivideScalar, SiDisplay, Decode, Encode)]
-pub struct ElectricCurrent(pub NativeType);
+pub struct ElectricCurrent {
+    native: NativeType,
+}
 
-#[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 #[derive(
     Copy, Clone, SiAddSubtract, SiMultiplyDivideScalar, SiDivide, SiDisplay, Decode, Encode,
 )]
 #[parameters(lhs_div = ElectricCurrent, rhs_div = Time)]
-pub struct ElectricCharge(pub NativeType);
+pub struct ElectricCharge {
+    native: NativeType,
+}
 
-#[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 #[derive(
     Copy, Clone, SiAddSubtract, SiMultiplyDivideScalar, SiDivide, SiDisplay, Decode, Encode,
 )]
 #[parameters(lhs_div = ElectricCharge, rhs_div = ElectricPotential)]
-pub struct Capacitance(pub NativeType);
+pub struct Capacitance {
+    native: NativeType,
+}
 
-#[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 #[derive(
     Copy, Clone, SiAddSubtract, SiMultiplyDivideScalar, SiDivide, SiDisplay, Decode, Encode,
 )]
 #[parameters(lhs_div = ElectricPotential, rhs_div = ElectricCurrent)]
-pub struct ElectricResistance(pub NativeType);
+pub struct ElectricResistance {
+    native: NativeType,
+}
 
-#[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 #[derive(
     Copy, Clone, SiAddSubtract, SiMultiplyDivideScalar, SiDivide, SiDisplay, Decode, Encode,
 )]
 #[parameters(lhs_div = ElectricCurrent, rhs_div = ElectricPotential)]
-pub struct ElectricConductance(pub NativeType);
+pub struct ElectricConductance {
+    native: NativeType,
+}
 
-#[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 #[derive(Copy, Clone, SiAddSubtract, SiMultiplyDivideScalar, SiDisplay, Decode, Encode)]
-pub struct MagneticFlux(pub NativeType);
+pub struct MagneticFlux {
+    native: NativeType,
+}
 
-#[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 #[derive(
     Copy, Clone, SiAddSubtract, SiMultiplyDivideScalar, SiDivide, SiDisplay, Decode, Encode,
 )]
 #[parameters(lhs_div = MagneticFlux, rhs_div = Area)]
-pub struct MagneticFluxDensity(pub NativeType);
+pub struct MagneticFluxDensity {
+    native: NativeType,
+}
 
-#[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 #[derive(
     Copy, Clone, SiAddSubtract, SiMultiplyDivideScalar, SiDivide, SiDisplay, Decode, Encode,
 )]
 #[parameters(lhs_div = MagneticFlux, rhs_div = ElectricCurrent)]
-pub struct Inductance(pub NativeType);
+pub struct Inductance {
+    native: NativeType,
+}
 
-#[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 #[derive(Copy, Clone, SiAddSubtract, SiMultiplyDivideScalar, SiDisplay, Decode, Encode)]
-pub struct ThermodynamicTemperature(pub NativeType);
+pub struct ThermodynamicTemperature {
+    native: NativeType,
+}
 
-#[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 #[derive(Copy, Clone, SiAddSubtract, SiMultiplyDivideScalar, SiDisplay, Decode, Encode)]
-pub struct Temperature(pub NativeType);
+pub struct Temperature {
+    native: NativeType,
+}
 
-#[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 #[derive(Copy, Clone, SiAddSubtract, SiMultiplyDivideScalar, SiDisplay, Decode, Encode)]
-pub struct AmountOfSubstance(pub NativeType);
+pub struct AmountOfSubstance {
+    native: NativeType,
+}
 
-#[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 #[derive(Copy, Clone, SiAddSubtract, SiInvert, SiDisplay, Decode, Encode)]
 #[parameters(inv = AmountOfSubstance)]
-pub struct PerAmountOfSubstance(pub NativeType);
+pub struct PerAmountOfSubstance {
+    native: NativeType,
+}
 
-#[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 #[derive(Copy, Clone, SiAddSubtract, SiDisplay, Decode, Encode)]
-pub struct LuminousIntensity(pub NativeType);
+pub struct LuminousIntensity {
+    native: NativeType,
+}
 
-#[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 #[derive(Copy, Clone, SiAddSubtract, SiMultiply, SiDisplay, Decode, Encode)]
 #[parameters(lhs_mult = LuminousIntensity, rhs_mult = SolidAngle)]
-pub struct LuminousFlux(pub NativeType);
+pub struct LuminousFlux {
+    native: NativeType,
+}
 
-#[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 #[derive(Copy, Clone, SiAddSubtract, SiDivide, SiDisplay, Decode, Encode)]
 #[parameters(lhs_div = LuminousIntensity, rhs_div = Area)]
-pub struct Illuminance(pub NativeType);
+pub struct Illuminance {
+    native: NativeType,
+}
 
-#[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 #[derive(Copy, Clone, SiAddSubtract, SiMultiply, SiDisplay, Decode, Encode)]
 #[parameters(lhs_mult = Pressure, rhs_mult = Time)]
-pub struct DynamicViscosity(pub NativeType);
+pub struct DynamicViscosity {
+    native: NativeType,
+}
 
-#[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 #[derive(Copy, Clone, SiAddSubtract, SiMultiply, SiDisplay, Decode, Encode)]
 #[parameters(lhs_mult = Force, rhs_mult = OrthogonalLength)]
-pub struct MomentOfForce(pub NativeType);
+pub struct MomentOfForce {
+    native: NativeType,
+}
 
-#[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
+#[derive(Copy, Clone, SiAddSubtract, SiDisplay, Decode, Encode)]
+pub struct Torque {
+    native: NativeType,
+}
+
 #[derive(Copy, Clone, SiAddSubtract, SiMultiply, SiDivide, SiDisplay, Decode, Encode)]
 #[parameters(lhs_mult = PlaneAngle, rhs_mult = Frequency, lhs_div = PlaneAngle, rhs_div = Time)]
-pub struct AngularVelocity(pub NativeType);
+pub struct AngularVelocity {
+    native: NativeType,
+}
 
-#[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
+#[derive(
+    Copy, Clone, SiAddSubtract, SiMultiplyDivideScalar, SiSquare, SiDisplay, Decode, Encode,
+)]
+#[parameters(square = AngularVelocity)]
+pub struct AngularVelocitySquared {
+    native: NativeType,
+}
+
 #[derive(Copy, Clone, SiAddSubtract, SiMultiply, SiDivide, SiDisplay, Decode, Encode)]
 #[parameters(lhs_mult = AngularVelocity, rhs_mult = Frequency, lhs_div = AngularVelocity, rhs_div = Time)]
-pub struct AngularAcceleration(pub NativeType);
+pub struct AngularAcceleration {
+    native: NativeType,
+}
 
-#[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 #[derive(Copy, Clone, SiAddSubtract, SiDivide, SiDisplay, Decode, Encode)]
 #[parameters(lhs_div = Force, rhs_div = Length)]
-pub struct SurfaceTension(pub NativeType);
+pub struct SurfaceTension {
+    native: NativeType,
+}
 
-#[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 #[derive(Copy, Clone, SiAddSubtract, SiDivide, SiDisplay, Decode, Encode)]
 #[parameters(lhs_div = Power, rhs_div = Area)]
-pub struct HeatFluxDensity(pub NativeType);
+pub struct HeatFluxDensity {
+    native: NativeType,
+}
 
-#[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 #[derive(Copy, Clone, SiAddSubtract, SiDivide, SiDisplay, Decode, Encode)]
 #[parameters(lhs_div = Energy, rhs_div = ThermodynamicTemperature)]
-pub struct HeatCapacity(pub NativeType);
+pub struct HeatCapacity {
+    native: NativeType,
+}
 
-#[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 #[derive(Copy, Clone, SiAddSubtract, SiDivide, SiDisplay, Decode, Encode)]
 #[parameters(lhs_div = Energy, rhs_div = MassThermodynamicTemperature)]
-pub struct SpecificHeatCapacity(pub NativeType);
+pub struct SpecificHeatCapacity {
+    native: NativeType,
+}
 
-#[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 #[derive(Copy, Clone, SiAddSubtract, SiDivide, SiDisplay, Decode, Encode)]
 #[parameters(lhs_div = Energy, rhs_div = Mass)]
-pub struct SpecificEnergy(pub NativeType);
+pub struct SpecificEnergy {
+    native: NativeType,
+}
 
-#[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 #[derive(Copy, Clone, SiAddSubtract, SiDivide, SiDisplay, Decode, Encode)]
 #[parameters(lhs_div = Energy, rhs_div = Volume)]
-pub struct EnergyDensity(pub NativeType);
+pub struct EnergyDensity {
+    native: NativeType,
+}
 
-#[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 #[derive(Copy, Clone, SiAddSubtract, SiDivide, SiDisplay, Decode, Encode)]
 #[parameters(lhs_div = ElectricPotential, rhs_div = Length)]
-pub struct ElectricFieldStrength(pub NativeType);
+pub struct ElectricFieldStrength {
+    native: NativeType,
+}
 
-#[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 #[derive(Copy, Clone, SiAddSubtract, SiDivide, SiDisplay, Decode, Encode)]
 #[parameters(lhs_div = ElectricCharge, rhs_div = Area)]
-pub struct ElectricFluxDensity(pub NativeType);
+pub struct ElectricFluxDensity {
+    native: NativeType,
+}
 
-#[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 #[derive(Copy, Clone, SiAddSubtract, SiMultiply, SiDivide, SiDisplay, Decode, Encode)]
 #[parameters(lhs_mult = ElectricFluxDensity, rhs_mult = Length, lhs_div = ElectricCharge, rhs_div = Volume)]
-pub struct ElectricChargeDensity(pub NativeType);
+pub struct ElectricChargeDensity {
+    native: NativeType,
+}
 
-#[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 #[derive(Copy, Clone, SiAddSubtract, SiDivide, SiDisplay, Decode, Encode)]
 #[parameters(lhs_div = Capacitance, rhs_div = Length)]
-pub struct Permittivity(pub NativeType);
+pub struct Permittivity {
+    native: NativeType,
+}
 
-#[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 #[derive(Copy, Clone, SiAddSubtract, SiDivide, SiDisplay, Decode, Encode)]
 #[parameters(lhs_div = Inductance, rhs_div = Length)]
-pub struct Permeability(pub NativeType);
+pub struct Permeability {
+    native: NativeType,
+}
 
-#[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 #[derive(Copy, Clone, SiAddSubtract, SiDivide, SiDisplay, Decode, Encode)]
 #[parameters(lhs_div = Energy, rhs_div = AmountOfSubstance)]
-pub struct MolarEnergy(pub NativeType);
+pub struct MolarEnergy {
+    native: NativeType,
+}
 
-#[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 #[derive(Copy, Clone, SiAddSubtract, SiMultiply, SiDisplay, Decode, Encode)]
 #[parameters(lhs_mult = AmountOfSubstance, rhs_mult = ThermodynamicTemperature)]
-pub struct AmountOfSubstanceThermodynamicTemperature(pub NativeType);
+pub struct AmountOfSubstanceThermodynamicTemperature {
+    native: NativeType,
+}
 
-#[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 #[derive(Copy, Clone, SiAddSubtract, SiDivide, SiDisplay, Decode, Encode)]
 #[parameters(lhs_div = Energy, rhs_div = AmountOfSubstanceThermodynamicTemperature)]
-pub struct MolarHeatCapacity(pub NativeType);
+pub struct MolarHeatCapacity {
+    native: NativeType,
+}
 
-#[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 #[derive(Copy, Clone, SiAddSubtract, SiMultiply, SiDisplay, Decode, Encode)]
 #[parameters(lhs_mult = Area, rhs_mult = SolidAngle)]
-pub struct AreaSolidAngle(pub NativeType);
+pub struct AreaSolidAngle {
+    native: NativeType,
+}
 
-#[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 #[derive(Copy, Clone, SiAddSubtract, SiDivide, SiDisplay, Decode, Encode)]
 #[parameters(lhs_div = Power, rhs_div = AreaSolidAngle)]
-pub struct Radiance(pub NativeType);
+pub struct Radiance {
+    native: NativeType,
+}
 
-#[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 #[derive(Copy, Clone, SiAddSubtract, SiMultiply, SiDisplay, Decode, Encode)]
 #[parameters(lhs_mult = Mass, rhs_mult = ThermodynamicTemperature)]
-pub struct MassThermodynamicTemperature(pub NativeType);
+pub struct MassThermodynamicTemperature {
+    native: NativeType,
+}
 
-#[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 #[derive(Copy, Clone, SiAddSubtract, SiMultiply, SiDisplay, Decode, Encode)]
 #[parameters(lhs_mult = Length, rhs_mult = ThermodynamicTemperature)]
-pub struct LengthThermodynamicTemperature(pub NativeType);
+pub struct LengthThermodynamicTemperature {
+    native: NativeType,
+}
 
-#[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 #[derive(Copy, Clone, SiAddSubtract, SiDivide, SiDisplay, Decode, Encode)]
 #[parameters(lhs_div = Length, rhs_div = LengthThermodynamicTemperature)]
-pub struct ThermalConductivity(pub NativeType);
+pub struct ThermalConductivity {
+    native: NativeType,
+}
 
 #[allow(non_upper_case_globals)]
 pub mod constants {
     use super::*;
 
     /// Speed of light in a vacuum
-    pub const c: Velocity = Velocity(299_792_458.0 as NativeType);
+    pub const c: Velocity = Velocity::new(299_792_458.0 as NativeType);
     /// Planck constant
-    pub const h: EnergyPerFrequency = EnergyPerFrequency(6.62607015E-34 as NativeType);
+    pub const h: EnergyPerFrequency = EnergyPerFrequency::new(6.62607015E-34 as NativeType);
     /// Sound pressure level of 0 dB
-    pub const p0: Pressure = Pressure(2.0E-5 as NativeType);
+    pub const p0: Pressure = Pressure::new(2.0E-5 as NativeType);
     /// Elementary charge
-    pub const e: ElectricCharge = ElectricCharge(1.602176634E-19 as NativeType);
+    pub const e: ElectricCharge = ElectricCharge::new(1.602176634E-19 as NativeType);
     /// Boltzmann constant
-    pub const k: HeatCapacity = HeatCapacity(1.380649E-23 as NativeType);
+    pub const k: HeatCapacity = HeatCapacity::new(1.380649E-23 as NativeType);
     /// Avogadro constant
-    pub const N_A: PerAmountOfSubstance = PerAmountOfSubstance(6.02214076E23 as NativeType);
+    pub const N_A: PerAmountOfSubstance = PerAmountOfSubstance::new(6.02214076E23 as NativeType);
     /// the luminous efficacy of monochromatic radiation of frequency 540 × 1012 hertz
-    pub const K_cd: LuminousFlux = LuminousFlux(683.0 as NativeType);
+    pub const K_cd: LuminousFlux = LuminousFlux::new(683.0 as NativeType);
     /// electron mass
-    pub const m_e: Mass = Mass(9.1093837015E-31 as NativeType);
+    pub const m_e: Mass = Mass::new(9.1093837015E-31 as NativeType);
     /// Proton mass
-    pub const m_p: Mass = Mass(1.67262192369E-27 as NativeType);
+    pub const m_p: Mass = Mass::new(1.67262192369E-27 as NativeType);
     /// neutron mass
-    pub const m_n: Mass = Mass(1.67492749804E-27 as NativeType);
+    pub const m_n: Mass = Mass::new(1.67492749804E-27 as NativeType);
     /// muon mass
-    pub const m_mu: Mass = Mass(1.883531627E-28 as NativeType);
+    pub const m_mu: Mass = Mass::new(1.883531627E-28 as NativeType);
     /// tau mass
-    pub const m_tau: Mass = Mass(3.16754E-27 as NativeType);
+    pub const m_tau: Mass = Mass::new(3.16754E-27 as NativeType);
     /// gravity
-    pub const g: Acceleration = Acceleration(9.80665 as NativeType);
+    pub const g: Acceleration = Acceleration::new(9.80665 as NativeType);
     /// characteristic impedance of vacuum
-    pub const Z_0: ElectricResistance = ElectricResistance(376.730313668 as NativeType);
+    pub const Z_0: ElectricResistance = ElectricResistance::new(376.730313668 as NativeType);
     /// Wien wavelength displacement law constant
     pub const b: LengthThermodynamicTemperature =
-        LengthThermodynamicTemperature(2.897771955E-3 as NativeType);
+        LengthThermodynamicTemperature::new(2.897771955E-3 as NativeType);
     /// Wien entropy displacement law constant
     pub const b_entropy: LengthThermodynamicTemperature =
-        LengthThermodynamicTemperature(3.002916077E-3 as NativeType);
+        LengthThermodynamicTemperature::new(3.002916077E-3 as NativeType);
 }
 
 #[cfg(feature = "std")]
@@ -581,7 +682,8 @@ mod tests {
     use super::*;
 
     use std::any::{Any, TypeId};
-    use units_si::si;
+
+    use crate::{basic, divide, invert, multiply};
 
     #[test]
     fn config_operations() {
@@ -592,79 +694,6 @@ mod tests {
         };
         println!("NativeType: {}", native_type);
         println!("SIGNIFICANT_FIGURES: {}", SIGNIFICANT_FIGURES);
-    }
-
-    macro_rules! basic {
-        ($name: ident, $type_name:ident) => {
-            #[test]
-            fn $name() {
-                let v0 = $type_name(5.0 as NativeType);
-                println!("v0 = {}", v0);
-                let mut v1 = v0;
-                assert_eq!(v1, v0);
-                v1 = $type_name(10.0 as NativeType);
-                assert!(v0 < v1);
-                assert!(v1 > v0);
-                assert!(v0 <= v1);
-                assert!(v1 >= v0);
-                let mut v2 = v0.clone();
-                assert_eq!(v0, v2);
-                v2 = $type_name(20.0 as NativeType);
-                let v3 = v1 + v2;
-                let v4 = (v3 - v0) * (40.0 as NativeType);
-                assert_ne!(v0, v1);
-                assert_eq!(v3, $type_name(30.0 as NativeType));
-                let v5 = v1 / v2;
-                assert_eq!(TypeId::of::<NativeType>(), v5.type_id());
-                println!("[{},{},{},{},{}]", v0, v1, v2, v3, v4);
-            }
-        };
-    }
-
-    macro_rules! invert {
-        ($name: ident, $type_name:ident, $inverted_type_name: ident) => {
-            #[test]
-            fn $name() {
-                let v0 = $type_name(5.0 as NativeType);
-                println!("v0 = {}", v0);
-                let v1 = (1.0 as NativeType) / v0;
-                assert_eq!(TypeId::of::<$inverted_type_name>(), v1.type_id());
-                let v2 = (1.0 as NativeType) / v1;
-                assert_eq!(TypeId::of::<$type_name>(), v2.type_id());
-            }
-        };
-    }
-
-    macro_rules! divide {
-        ($name: ident, $type_name:ident, $lhs: ident, $rhs: ident) => {
-            #[test]
-            fn $name() {
-                let lhs = $lhs(100.0 as NativeType);
-                let rhs = $rhs(10.0 as NativeType);
-                let v0 = lhs / rhs;
-                assert_eq!(v0, $type_name(10.0 as NativeType));
-                let v1 = rhs * v0;
-                assert_eq!(v1, $lhs(100.0 as NativeType));
-                let v2 = v0 * rhs;
-                assert_eq!(v2, $lhs(100.0 as NativeType));
-            }
-        };
-    }
-
-    macro_rules! multiply {
-        ($name: ident, $type_name:ident, $lhs: ident, $rhs: ident) => {
-            #[test]
-            fn $name() {
-                let lhs = $lhs(100.0 as NativeType);
-                let rhs = $rhs(10.0 as NativeType);
-                let v0 = lhs * rhs;
-                assert_eq!(v0, $type_name(1000.0 as NativeType));
-                let v1 = v0 / rhs;
-                assert_eq!(v1, $lhs(100.0 as NativeType));
-                let v2 = v0 / lhs;
-                assert_eq!(v2, $rhs(10.0 as NativeType));
-            }
-        };
     }
 
     basic!(test_length, Length);
@@ -938,134 +967,88 @@ mod tests {
     );
 
     #[test]
-    fn suffix_operations() {
-        let v0 = si!(1g);
-        std::assert_eq!(v0, Mass(0.001 as NativeType));
-        let v0 = si!(1kg);
-        assert_eq!(v0, Mass(1.0 as NativeType));
-        assert_eq!(TypeId::of::<Mass>(), v0.type_id());
-        let v0 = si!(1s);
-        assert_eq!(TypeId::of::<Time>(), v0.type_id());
-        let v0 = si!(1A);
-        assert_eq!(TypeId::of::<ElectricCurrent>(), v0.type_id());
-        let v0 = si!(1K);
-        assert_eq!(TypeId::of::<ThermodynamicTemperature>(), v0.type_id());
-        let v0 = si!(1mol);
-        assert_eq!(TypeId::of::<AmountOfSubstance>(), v0.type_id());
-        let v0 = si!(1m);
-        assert_eq!(TypeId::of::<Length>(), v0.type_id());
-        let v0 = si!(1cd);
-        assert_eq!(TypeId::of::<LuminousIntensity>(), v0.type_id());
-        let v0 = si!(1rad);
-        assert_eq!(TypeId::of::<PlaneAngle>(), v0.type_id());
-        let v0 = si!(1sr);
-        assert_eq!(TypeId::of::<SolidAngle>(), v0.type_id());
-        let v0 = si!(1Hz);
-        assert_eq!(TypeId::of::<Frequency>(), v0.type_id());
-        let v0 = si!(1m2);
-        assert_eq!(TypeId::of::<Area>(), v0.type_id());
-        let v0 = si!(1m3);
-        assert_eq!(TypeId::of::<Volume>(), v0.type_id());
-        let v0 = si!(1mps);
-        assert_eq!(TypeId::of::<Velocity>(), v0.type_id());
-        let v0 = si!(1mps2);
-        assert_eq!(TypeId::of::<Acceleration>(), v0.type_id());
-        let v0 = si!(1Pa);
-        assert_eq!(TypeId::of::<Pressure>(), v0.type_id());
-        let v0 = si!(1J);
-        assert_eq!(TypeId::of::<Energy>(), v0.type_id());
-        let v0 = si!(1W);
-        assert_eq!(TypeId::of::<Power>(), v0.type_id());
-        let v0 = si!(1C);
-        assert_eq!(TypeId::of::<ElectricCharge>(), v0.type_id());
-        let v0 = si!(1V);
-        assert_eq!(TypeId::of::<ElectricPotential>(), v0.type_id());
-        let v0 = si!(1F);
-        assert_eq!(TypeId::of::<Capacitance>(), v0.type_id());
-        let v0 = si!(1ohms);
-        assert_eq!(TypeId::of::<ElectricResistance>(), v0.type_id());
-        let v0 = si!(1S);
-        assert_eq!(TypeId::of::<ElectricConductance>(), v0.type_id());
-        let v0 = si!(1Wb);
-        assert_eq!(TypeId::of::<MagneticFlux>(), v0.type_id());
-        let v0 = si!(1T);
-        assert_eq!(TypeId::of::<MagneticFluxDensity>(), v0.type_id());
-        let v0 = si!(1H);
-        assert_eq!(TypeId::of::<Inductance>(), v0.type_id());
-        let v0 = si!(1degreeC);
-        assert_eq!(TypeId::of::<Temperature>(), v0.type_id());
-        let v0 = si!(1lm);
-        assert_eq!(TypeId::of::<LuminousFlux>(), v0.type_id());
-        let v0 = si!(1lx);
-        assert_eq!(TypeId::of::<Illuminance>(), v0.type_id());
-        let v0 = si!(1Pas);
-        assert_eq!(TypeId::of::<DynamicViscosity>(), v0.type_id());
-        let v0 = si!(1Nm);
-        assert_eq!(TypeId::of::<MomentOfForce>(), v0.type_id());
-    }
-
-    #[test]
-    fn modifying_operations() {
-        assert_eq!(Power(0.000_000_000_000_001 as NativeType), si!(1fW));
-        assert_eq!(Power(0.000_000_000_001 as NativeType), si!(1pW));
-        assert_eq!(Power(0.000_000_001 as NativeType), si!(1nW));
-        assert_eq!(Power(0.000_001 as NativeType), si!(1uW));
-        assert_eq!(Power(0.001 as NativeType), si!(1mW));
-        assert_eq!(Power(1.0 as NativeType), si!(1W));
-        assert_eq!(Power(1_000.0 as NativeType), si!(1kW));
-        assert_eq!(Power(1_000_000.0 as NativeType), si!(1MW));
-        assert_eq!(Power(1_000_000_000.0 as NativeType), si!(1GW));
-        assert_eq!(Power(1E12 as NativeType), si!(1TW));
-    }
-
-    #[test]
     fn scalar_operations() {
-        assert_eq!(Power(1.0 as NativeType) * 1000., si!(1kW));
-        let db = Decibel::new(-3., si!(1W), DecibelType::Power);
-        assert_eq!(db * si!(10W), si!(5011872uW));
-        println!("10W * -3dB = {}", si!(10W) * db);
-        let db = Decibel::new_from_raw(si!(5W), si!(1W), DecibelType::Power);
-        assert_eq!(db.to_units(), si!(5W));
-        let db = Decibel::new_from_raw(si!(50V), si!(1V), DecibelType::Signal);
-        assert_eq!(db.to_units(), si!(50V));
-    }
-
-    #[test]
-    fn rounding_operations() {
-        let power = si!(50W);
-        assert_eq!(TypeId::of::<Power>(), power.type_id());
-        assert_eq!(power, si!(50W));
-        assert_eq!(power, si!(50000mW));
-        assert_eq!(power, si!(50000011uW));
-
-        //These require SIGNIFICANT_FIGURES=6
-        assert_ne!(power, si!(50000111uW));
-        assert_eq!(si!(500mV), si!(500_000uV));
-        assert_ne!(si!(500mV), si!(500_001uV));
-        assert_eq!(si!(50mV), si!(50_000uV));
-        assert_ne!(si!(50mV), si!(50_000_100nV));
-        assert_eq!(si!(5mV), si!(5_000_001nV));
-        assert_ne!(si!(5mV), si!(5_000_010nV));
+        assert_eq!(Power::new(1.0) * Scalar::new(1000.), Power::new(1000.));
+        let db = Decibel::new_from_raw(Power::new(5.), Power::new(1.), DecibelType::Power);
+        assert_eq!(db.to_units(), Power::new(5.));
+        let db = Decibel::new_from_raw(
+            ElectricPotential::new(50.),
+            ElectricPotential::new(1.),
+            DecibelType::Signal,
+        );
+        assert_eq!(db.to_units(), ElectricPotential::new(50.));
     }
 
     #[test]
     fn readme_test() {
-        let length = si!(32m);
-        let duration = si!(10ms);
+        let length = Length::new(32.);
+        let duration = Time::new(0.01);
         let velocity = length / duration;
         println!("Velocity: {}", velocity);
 
-        let voltage = si!(10A * 100ohms);
+        let current = ElectricCurrent::new(10.);
+        let resistance = ElectricResistance::new(100.);
+        let voltage = current * resistance;
         println!("Voltage: {}", voltage);
 
         //doing and ADC conversion
         let adc_value = 100_u16;
-        let volts_per_bit = si!(4mV);
-        let v_out = (adc_value as NativeType) * volts_per_bit;
-        let r_top = si!(4kohms);
-        let r_bottom = si!(1kohms);
+        let volts_per_bit = ElectricPotential::new(0.004);
+        let v_out = Scalar::from(adc_value as NativeType) * volts_per_bit;
+        let r_top = ElectricResistance::new(4000.);
+        let r_bottom = ElectricResistance::new(1000.);
         //calculate the input voltage before a voltage divider
         let sensor_voltage = v_out * ((r_top + r_bottom) / r_bottom);
         println!("Sensor Voltage: {}", sensor_voltage);
+    }
+
+    #[test]
+    fn serde_test() {
+        #[derive(serde::Serialize, serde::Deserialize)]
+        struct Values {
+            volts: ElectricPotential,
+            current: ElectricCurrent,
+            charge: ElectricCharge,
+        }
+
+        let values = Values {
+            volts: ElectricPotential::new(10.0),
+            current: ElectricCurrent::new(100.0),
+            charge: ElectricCharge::new(1000.0),
+        };
+
+        let json_string =
+            serde_json::to_string_pretty(&values).expect("Failed to create a json string");
+
+        let value: serde_json::Value =
+            serde_json::from_str(&json_string).expect("Failed to parse JSON string");
+
+        let map = value.as_object().expect("Not a map");
+        let volt_string = map
+            .get("volts")
+            .expect("volts missing")
+            .as_str()
+            .expect("Not a string");
+        assert_eq!(volt_string, "10_volts");
+
+        let volt_string = map
+            .get("current")
+            .expect("current missing")
+            .as_str()
+            .expect("Not a string");
+        assert_eq!(volt_string, "100_amps");
+
+        let volt_string = map
+            .get("charge")
+            .expect("charge missing")
+            .as_str()
+            .expect("Not a string");
+        assert_eq!(volt_string, "1000_coulombs");
+
+        let deserde_values: Values = serde_json::from_str(&json_string).expect("Failed to deserde");
+
+        assert_eq!(values.volts, deserde_values.volts);
+        assert_eq!(values.current, deserde_values.current);
+        assert_eq!(values.charge, deserde_values.charge);
     }
 }

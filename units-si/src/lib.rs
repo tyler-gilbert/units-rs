@@ -1,14 +1,8 @@
 extern crate proc_macro;
 
 use proc_macro::TokenStream;
-use quote::ToTokens;
 use syn::parse::{Parse, ParseStream};
-use syn::spanned::Spanned;
-use syn::{
-    parse_macro_input, parse_quote,
-    visit_mut::{self, VisitMut},
-    DeriveInput, Expr, ExprLit, Lit, LitInt, Token,
-};
+use syn::{DeriveInput, Token};
 
 struct Parameters {
     parameters: Vec<(String, syn::Ident)>,
@@ -76,102 +70,103 @@ pub fn add_subtract_macro_derive(input: TokenStream) -> TokenStream {
 
 fn impl_add_subtract_macro(ast: &syn::DeriveInput) -> TokenStream {
     let name = &ast.ident;
-    let gen = quote::quote! {
+    let generate = quote::quote! {
         impl core::cmp::PartialEq for #name {
             fn eq(&self, rhs: &Self) -> bool {
                 #[cfg(feature = "f32")]
                 {
-                    let lhs_log = libm::floorf(libm::log10f(self.0)) as i32;
-                    let rhs_log = libm::floorf(libm::log10f(rhs.0)) as i32;
+                    let lhs_log = libm::floorf(libm::log10f(self.native)) as i32;
+                    let rhs_log = libm::floorf(libm::log10f(rhs.native)) as i32;
                     if( lhs_log != rhs_log ){
                         return false;
                     }
-                    let power_of = (SIGNIFICANT_FIGURES - lhs_log - 1) as NativeType;
-                    (libm::roundf((self.0 - rhs.0) * libm::powf(10.0 as NativeType, power_of))) as i32 == 0
+                    let power_of = (crate::SIGNIFICANT_FIGURES - lhs_log - 1) as crate::NativeType;
+                    (libm::roundf((self.native - rhs.native) * libm::powf(10.0 as crate::NativeType, power_of))) as i32 == 0
                 }
 
                 #[cfg(not(feature = "f32"))]
                 {
-                    let lhs_log = libm::floor(libm::log10(self.0)) as i32;
-                    let rhs_log = libm::floor(libm::log10(rhs.0)) as i32;
+                    let lhs_log = libm::floor(libm::log10(self.native)) as i32;
+                    let rhs_log = libm::floor(libm::log10(rhs.native)) as i32;
                     if( lhs_log != rhs_log ){
                         return false;
                     }
-                    let power_of = (SIGNIFICANT_FIGURES - lhs_log - 1) as NativeType;
-                    (libm::round((self.0 - rhs.0) * libm::pow(10.0 as NativeType, power_of))) as i32 == 0
+                    let power_of = (crate::SIGNIFICANT_FIGURES - lhs_log - 1) as crate::NativeType;
+                    (libm::round((self.native - rhs.native) * libm::pow(10.0 as crate::NativeType, power_of))) as i32 == 0
                 }
             }
         }
 
-        impl Into<NativeType> for #name {
-            fn into(self) -> NativeType {
-                self.0
+        impl #name {
+            pub const fn new(native: crate::NativeType) -> Self {
+                Self{ native }
+            }
+
+            pub fn abs(&self) -> Self {
+                Self{ native: self.native.abs() }
+            }
+
+        }
+
+        impl Into<crate::NativeType> for #name {
+            fn into(self) -> crate::NativeType {
+                self.native
             }
         }
 
-        impl From<NativeType> for #name {
-            fn from(value: NativeType) -> #name {
-                #name(value)
+        impl From<crate::NativeType> for #name {
+            fn from(native: crate::NativeType) -> #name {
+                #name{ native }
             }
         }
 
         impl core::cmp::PartialOrd for #name {
             fn partial_cmp(&self, other: &Self) -> Option<core::cmp::Ordering> {
-                self.0.partial_cmp(&other.0)
+                self.native.partial_cmp(&other.native)
             }
-
-            /*
-            fn le(&self, other: #name) -> bool {
-                self.0 < other.0 || self == other
-            }
-
-            fn ge(&self, other: #name) -> bool {
-                self.0 > other.0 || self == other
-            }
-            */
         }
 
         impl core::ops::Add for #name {
             type Output = Self;
             fn add(self, rhs: Self) -> Self {
-               Self(self.0 + rhs.0)
+               Self::from(self.native + rhs.native)
             }
         }
 
-        impl core::ops::Mul<Scalar> for #name {
+        impl core::ops::Mul<crate::Scalar> for #name {
             type Output = Self;
-            fn mul(self, rhs: Scalar) -> Self {
-               Self(self.0 * rhs.0)
+            fn mul(self, rhs: crate::Scalar) -> Self {
+               Self::from(self.native * rhs.native)
             }
         }
 
         impl core::ops::Div<#name> for #name {
-            type Output = Scalar;
-            fn div(self, rhs: #name) -> Scalar {
-               Scalar(self.0 / rhs.0)
+            type Output = crate::Scalar;
+            fn div(self, rhs: #name) -> crate::Scalar {
+               crate::Scalar::from(self.native / rhs.native)
             }
         }
 
         impl core::ops::AddAssign for #name {
             fn add_assign(&mut self, rhs: Self) {
-               *self = Self(self.0 + rhs.0);
+               *self = Self::from(self.native + rhs.native);
             }
         }
 
         impl core::ops::Sub for #name {
             type Output = Self;
             fn sub(self, rhs: Self) -> Self {
-               Self(self.0 - rhs.0)
+               Self::from(self.native - rhs.native)
             }
         }
 
         impl core::ops::SubAssign for #name {
             fn sub_assign(&mut self, rhs: Self) {
-               *self = Self(self.0 - rhs.0);
+               *self = Self::from(self.native - rhs.native);
             }
         }
     };
-    gen.into()
+    generate.into()
 }
 
 #[proc_macro_derive(SiMultiplyDivideScalar)]
@@ -186,32 +181,32 @@ pub fn add_subtract_no_divide_macro_derive(input: TokenStream) -> TokenStream {
 
 fn impl_multiply_divide_scalar_macro(ast: &syn::DeriveInput) -> TokenStream {
     let name = &ast.ident;
-    let gen = quote::quote! {
+    let generate = quote::quote! {
 
-        impl core::ops::Mul<Decibel<#name>> for #name
+        impl core::ops::Mul<crate::Decibel<#name>> for #name
         {
             type Output = Self;
-            fn mul(self, rhs: Decibel<#name>) -> Self {
+            fn mul(self, rhs: crate::Decibel<#name>) -> Self {
                 Self::from(self * rhs.ratio())
             }
         }
 
-        impl core::ops::Mul<#name> for Scalar {
+        impl core::ops::Mul<#name> for crate::Scalar {
             type Output = #name;
             fn mul(self, rhs: #name) -> #name {
-               #name(self.0 * rhs.0)
+               #name::from(self.native * rhs.native)
             }
         }
 
-        impl core::ops::Div<Scalar> for #name {
+        impl core::ops::Div<crate::Scalar> for #name {
             type Output = #name;
-            fn div(self, rhs: Scalar) -> #name {
-               #name(self.0 / rhs.0)
+            fn div(self, rhs: crate::Scalar) -> #name {
+               #name::from(self.native / rhs.native)
             }
         }
 
     };
-    gen.into()
+    generate.into()
 }
 
 fn get_parameters(ast: &DeriveInput, expect: &'static str) -> Parameters {
@@ -254,18 +249,18 @@ pub fn mult_alt_macro_derive(input: TokenStream) -> TokenStream {
 }
 
 fn gen_multiply(name: &syn::Ident, lhs: syn::Ident, rhs: syn::Ident) -> TokenStream {
-    let gen = quote::quote! {
+    let generate = quote::quote! {
         impl core::ops::Mul<#rhs> for #lhs {
             type Output = #name;
             fn mul(self, rhs: #rhs) -> #name {
-               #name(self.0 * rhs.0)
+               #name::from(self.native * rhs.native)
             }
         }
 
         impl core::ops::Mul<#lhs> for #rhs {
             type Output = #name;
             fn mul(self, rhs: #lhs) -> #name {
-               #name(self.0 * rhs.0)
+               #name::from(self.native * rhs.native)
             }
         }
 
@@ -273,18 +268,18 @@ fn gen_multiply(name: &syn::Ident, lhs: syn::Ident, rhs: syn::Ident) -> TokenStr
         impl core::ops::Div<#rhs> for #name {
             type Output = #lhs;
             fn div(self, rhs: #rhs) -> #lhs {
-               #lhs(self.0 / rhs.0)
+               #lhs::from(self.native / rhs.native)
             }
         }
 
         impl core::ops::Div<#lhs> for #name {
             type Output = #rhs;
             fn div(self, rhs: #lhs) -> #rhs {
-               #rhs(self.0 / rhs.0)
+               #rhs::from(self.native / rhs.native)
             }
         }
     };
-    gen.into()
+    generate.into()
 }
 
 #[proc_macro_derive(SiSquare, attributes(parameters))]
@@ -293,22 +288,37 @@ pub fn square_macro_derive(input: TokenStream) -> TokenStream {
     let parameters = get_parameters(&ast, "parameters required for deriving SiSquare");
     let name = &ast.ident;
     let square = parameters.get_token("square");
-    let gen = quote::quote! {
+    let generate = quote::quote! {
         impl core::ops::Mul<#square> for #square {
             type Output = #name;
             fn mul(self, square: #square) -> #name {
-               #name(self.0 * square.0)
+               #name::from(self.native * square.native)
             }
         }
 
         impl core::ops::Div<#square> for #name {
             type Output = #square;
             fn div(self, square: #square) -> #square {
-               #square(self.0 / square.0)
+               #square::from(self.native / square.native)
             }
         }
+
+        impl #name {
+            pub fn sqrt(&self) -> #square {
+                #[cfg(feature = "f32")]
+                {
+                    #square::from(libm::sqrtf(self.native))
+                }
+
+                #[cfg(not(feature = "f32"))]
+                {
+                    #square::from(libm::sqrt(self.native))
+                }
+            }
+        }
+
     };
-    gen.into()
+    generate.into()
 }
 
 #[proc_macro_derive(SiInvert, attributes(parameters))]
@@ -317,39 +327,39 @@ pub fn invert_macro_derive(input: TokenStream) -> TokenStream {
     let parameters = get_parameters(&ast, "parameters required for deriving SiSquare");
     let name = &ast.ident;
     let inv = parameters.get_token("inv");
-    let gen = quote::quote! {
+    let generate = quote::quote! {
         impl core::ops::Mul<#inv> for #name {
-            type Output = Scalar;
-            fn mul(self, inv: #inv) -> Scalar {
-               Scalar(self.0 * inv.0)
+            type Output = crate::Scalar;
+            fn mul(self, inv: #inv) -> crate::Scalar {
+               crate::Scalar::from(self.native * inv.native)
             }
         }
 
         impl core::ops::Mul<#name> for #inv {
-            type Output = Scalar;
-            fn mul(self, name: #name) -> Scalar {
-               Scalar(self.0 * name.0)
+            type Output = crate::Scalar;
+            fn mul(self, name: #name) -> crate::Scalar {
+               crate::Scalar::from(self.native * name.native)
             }
         }
 
 
-        impl core::ops::Div<#inv> for Scalar {
+        impl core::ops::Div<#inv> for crate::Scalar {
             type Output = #name;
             fn div(self, inv: #inv) -> #name {
-               #name(self.0 / inv.0)
+               #name::from(self.native / inv.native)
             }
         }
 
 
-        impl core::ops::Div<#name> for Scalar {
+        impl core::ops::Div<#name> for crate::Scalar {
             type Output = #inv;
             fn div(self, name: #name) -> #inv {
-               #inv(self.0 / name.0)
+               #inv::from(self.native / name.native)
             }
         }
 
     };
-    gen.into()
+    generate.into()
 }
 
 #[proc_macro_derive(SiDivide, attributes(parameters))]
@@ -362,483 +372,420 @@ pub fn divide_macro_derive(input: TokenStream) -> TokenStream {
     let name = &ast.ident;
     let lhs = parameters.get_token("lhs_div");
     let rhs = parameters.get_token("rhs_div");
-    let gen = quote::quote! {
+    let generate = quote::quote! {
         impl core::ops::Div<#rhs> for #lhs {
             type Output = #name;
             fn div(self, rhs: #rhs) -> #name {
-               #name(self.0 / rhs.0)
+               #name::from(self.native / rhs.native)
             }
         }
 
         impl core::ops::Div<#name> for #lhs {
             type Output = #rhs;
             fn div(self, rhs: #name) -> #rhs {
-               #rhs(self.0 / rhs.0)
+               #rhs::from(self.native / rhs.native)
             }
         }
 
         impl core::ops::Mul<#rhs> for #name {
             type Output = #lhs;
             fn mul(self, rhs: #rhs) -> #lhs {
-               #lhs(self.0 * rhs.0)
+               #lhs::from(self.native * rhs.native)
             }
         }
 
         impl core::ops::Mul<#name> for #rhs {
             type Output = #lhs;
             fn mul(self, rhs: #name) -> #lhs {
-               #lhs(self.0 * rhs.0)
+               #lhs::from(self.native * rhs.native)
             }
         }
     };
-    gen.into()
+    generate.into()
 }
 
-// actual procedural macro
-#[proc_macro]
-pub fn si(input: TokenStream) -> TokenStream {
-    let mut input = parse_macro_input!(input as Expr);
-    LiteralReplacer.visit_expr_mut(&mut input);
-    input.into_token_stream().into()
+#[proc_macro_derive(SiConvert, attributes(parameters))]
+pub fn convert_macro_derive(input: TokenStream) -> TokenStream {
+    // Construct a representation of Rust code as a syntax tree
+    // that we can manipulate
+    let ast: DeriveInput = syn::parse(input).unwrap();
+    let parameters = get_parameters(&ast, "parameters required for deriving SiDivide");
+
+    let name = &ast.ident;
+    let multiplier = parameters.get_token("multiplier");
+    let offset = parameters.get_token("offset");
+    let into = parameters.get_token("into");
+    let generate = quote::quote! {
+
+        impl From<#into> for #name {
+            fn from(value: #into) -> Self {
+                Self::from(value.native * #multiplier + #offset)
+            }
+        }
+
+        impl Into<#into> for #name {
+            fn into(self) -> #into {
+                #into::from((self.native - #offset) / #multiplier)
+            }
+        }
+    };
+    generate.into()
 }
 
 struct UnitType {
-    literal_suffix: &'static str,
-    suffix: &'static str,
     name: &'static str,
     label: &'static str,
 }
 
-struct ModifierType {
-    prefix: &'static str,
-    multiplier: f64,
-}
-
-fn process_unit(suffix: &str, unit_value: &syn::LitInt, unit: &UnitType) -> Option<Expr> {
-    let modifiers = [
-        ModifierType {
-            prefix: "f",
-            multiplier: 0.000_000_000_000_001,
-        },
-        ModifierType {
-            prefix: "p",
-            multiplier: 0.000_000_000_001,
-        },
-        ModifierType {
-            prefix: "n",
-            multiplier: 0.000_000_001,
-        },
-        ModifierType {
-            prefix: "u",
-            multiplier: 0.000_001,
-        },
-        ModifierType {
-            prefix: "m",
-            multiplier: 0.001,
-        },
-        ModifierType {
-            prefix: "k",
-            multiplier: 1000.0,
-        },
-        ModifierType {
-            prefix: "M",
-            multiplier: 1_000_000.0,
-        },
-        ModifierType {
-            prefix: "G",
-            multiplier: 1_000_000_000.0,
-        },
-        ModifierType {
-            prefix: "T",
-            multiplier: 1_000_000_000_000.0,
-        },
-    ];
-
-    if unit.literal_suffix == "" {
-        return None;
-    }
-
-    let name: syn::Expr = syn::parse_str(unit.name).expect("failed ot parse");
-    let adjust_kilo_default = if unit.name == "Mass" { 0.001 } else { 1.0 };
-
-    for modifier in modifiers {
-        let multiplier = modifier.multiplier;
-        if suffix == format!("{}{}", modifier.prefix, unit.literal_suffix) {
-            return Some(
-                parse_quote! { #name( #unit_value as NativeType * #multiplier as NativeType * #adjust_kilo_default as NativeType) },
-            );
-        }
-    }
-
-    if suffix == unit.literal_suffix {
-        return Some(
-            parse_quote! { #name( #unit_value as NativeType * #adjust_kilo_default as NativeType) },
-        );
-    }
-
-    return None;
-}
-
 const UNITS: &[UnitType] = &[
     UnitType {
-        literal_suffix: "scalar",
-        suffix: "scalar",
         name: "Scalar",
         label: "scalar",
     },
     UnitType {
-        literal_suffix: "dBV",
-        suffix: "dBV",
         name: "DecibelV",
         label: "decibelsV",
     },
     UnitType {
-        literal_suffix: "dB",
-        suffix: "dB",
         name: "Decibel",
         label: "decibels",
     },
     UnitType {
-        literal_suffix: "g",
-        suffix: "kg",
         name: "Mass",
         label: "kilograms",
     },
     UnitType {
-        literal_suffix: "s",
-        suffix: "s",
         name: "Time",
         label: "seconds",
     },
     UnitType {
-        literal_suffix: "A",
-        suffix: "A",
         name: "ElectricCurrent",
         label: "amps",
     },
     UnitType {
-        literal_suffix: "K",
-        suffix: "K",
         name: "ThermodynamicTemperature",
         label: "kelvin",
     },
     UnitType {
-        literal_suffix: "mol",
-        suffix: "mol",
         name: "AmountOfSubstance",
         label: "moles",
     },
     UnitType {
-        literal_suffix: "m",
-        suffix: "m",
         name: "Length",
         label: "meters",
     },
     UnitType {
-        literal_suffix: "",
-        suffix: "m",
+        name: "LengthInverse",
+        label: "1/meter",
+    },
+    UnitType {
         name: "OrthogonalLength",
         label: "meters",
     },
     UnitType {
-        literal_suffix: "cd",
-        suffix: "cd",
         name: "LuminousIntensity",
         label: "candelas",
     },
     UnitType {
-        literal_suffix: "rad",
-        suffix: "rad",
         name: "PlaneAngle",
         label: "radians",
     },
     UnitType {
-        literal_suffix: "sr",
-        suffix: "sr",
+        name: "PlaneAngleInverse",
+        label: "1/radians",
+    },
+    UnitType {
         name: "SolidAngle",
         label: "steradians",
     },
     UnitType {
-        literal_suffix: "Hz",
-        suffix: "Hz",
         name: "Frequency",
         label: "hertz",
     },
     UnitType {
-        literal_suffix: "m2",
-        suffix: "m^2",
-        name: "Area",
-        label: "meters squared",
+        name: "FrequencySquared",
+        label: "hertz^2",
     },
     UnitType {
-        literal_suffix: "m3",
-        suffix: "m^3",
+        name: "Area",
+        label: "meters^2",
+    },
+    UnitType {
         name: "Volume",
         label: "meters cubed",
     },
     UnitType {
-        literal_suffix: "mps",
-        suffix: "m/s",
         name: "Velocity",
-        label: "meters per second",
+        label: "meters/second",
     },
     UnitType {
-        literal_suffix: "mps2",
-        suffix: "m/s^2",
+        name: "VelocitySquared",
+        label: "(meters/second)^2",
+    },
+    UnitType {
         name: "Acceleration",
-        label: "meters per second squared",
+        label: "meters/second^2",
     },
     UnitType {
-        literal_suffix: "N",
-        suffix: "N",
+        name: "Jerk",
+        label: "meters/second^3",
+    },
+    UnitType {
         name: "Force",
         label: "newtons",
     },
     UnitType {
-        literal_suffix: "Pa",
-        suffix: "Pa",
         name: "Pressure",
         label: "pascals",
     },
     UnitType {
-        literal_suffix: "J",
-        suffix: "J",
         name: "Energy",
         label: "joules",
     },
     UnitType {
-        literal_suffix: "",
-        suffix: "J/Hz",
         name: "EnergyPerFrequency",
         label: "joules/hertz",
     },
     UnitType {
-        literal_suffix: "W",
-        suffix: "W",
         name: "Power",
         label: "watts",
     },
     UnitType {
-        literal_suffix: "C",
-        suffix: "C",
         name: "ElectricCharge",
         label: "coulombs",
     },
     UnitType {
-        literal_suffix: "V",
-        suffix: "V",
         name: "ElectricPotential",
         label: "volts",
     },
     UnitType {
-        literal_suffix: "F",
-        suffix: "F",
         name: "Capacitance",
         label: "farads",
     },
     UnitType {
-        literal_suffix: "ohms",
-        suffix: "ohms",
         name: "ElectricResistance",
         label: "ohms",
     },
     UnitType {
-        literal_suffix: "S",
-        suffix: "S",
         name: "ElectricConductance",
         label: "siemens",
     },
     UnitType {
-        literal_suffix: "Wb",
-        suffix: "Wb",
         name: "MagneticFlux",
         label: "webers",
     },
     UnitType {
-        literal_suffix: "T",
-        suffix: "T",
         name: "MagneticFluxDensity",
         label: "teslas",
     },
     UnitType {
-        literal_suffix: "H",
-        suffix: "H",
         name: "Inductance",
-        label: "henry",
+        label: "henries",
     },
     UnitType {
-        literal_suffix: "degreeC",
-        suffix: "C",
         name: "Temperature",
-        label: "degrees Celcuis",
+        label: "celcius",
     },
     UnitType {
-        literal_suffix: "lm",
-        suffix: "lm",
         name: "LuminousFlux",
         label: "lumens",
     },
     UnitType {
-        literal_suffix: "lx",
-        suffix: "lx",
         name: "Illuminance",
         label: "lux",
     },
     UnitType {
-        literal_suffix: "Pas",
-        suffix: "Pas",
         name: "DynamicViscosity",
-        label: "pascal seconds",
+        label: "pascals*seconds",
     },
     UnitType {
-        literal_suffix: "Nm",
-        suffix: "Nm",
         name: "MomentOfForce",
-        label: "newton meters",
+        label: "newtons*meters",
     },
     UnitType {
-        literal_suffix: "",
-        suffix: "rad/s",
+        name: "Torque",
+        label: "newtons*meters",
+    },
+    UnitType {
         name: "AngularVelocity",
-        label: "radians per second",
+        label: "radians/second",
     },
     UnitType {
-        literal_suffix: "",
-        suffix: "rad/s^2",
+        name: "AngularVelocitySquared",
+        label: "(radians/second)^2",
+    },
+    UnitType {
         name: "AngularAcceleration",
-        label: "radians per second squared",
+        label: "radians/second^2",
     },
     UnitType {
-        literal_suffix: "",
-        suffix: "N/m",
         name: "SurfaceTension",
-        label: "newtons per meter",
+        label: "newtons/meter",
     },
     UnitType {
-        literal_suffix: "",
-        suffix: "W/m^2",
         name: "HeatFluxDensity",
-        label: "watts per meter squared",
+        label: "watts/meter^2",
     },
     UnitType {
-        literal_suffix: "",
-        suffix: "J/K",
         name: "HeatCapacity",
-        label: "joules per kelvin",
+        label: "joules/kelvin",
     },
     UnitType {
-        literal_suffix: "",
-        suffix: "J/(kg*K)",
         name: "SpecificHeatCapacity",
-        label: "joules per kilogram kelvin",
+        label: "joules/(kilogram*kelvin)",
     },
     UnitType {
-        literal_suffix: "",
-        suffix: "J/kg",
         name: "SpecificEnergy",
-        label: "joules per kilogram",
+        label: "joules/kilogram",
     },
     UnitType {
-        literal_suffix: "",
-        suffix: "W/(m*K)",
         name: "ThermalConductivity",
-        label: "watts per meter kelvin",
+        label: "watts/(meter*kelvin)",
     },
     UnitType {
-        literal_suffix: "",
-        suffix: "J/m^3",
         name: "EnergyDensity",
-        label: "joules per meter cubed",
+        label: "joules/meter^3",
     },
     UnitType {
-        literal_suffix: "",
-        suffix: "V/m",
         name: "ElectricFieldStrength",
-        label: "volts per meter",
+        label: "volts/meter",
     },
     UnitType {
-        literal_suffix: "",
-        suffix: "C/m^3",
         name: "ElectricChargeDensity",
-        label: "coulombs per meter cubed",
+        label: "coulombs/meter^3",
     },
     UnitType {
-        literal_suffix: "",
-        suffix: "C/m^2",
         name: "ElectricFluxDensity",
-        label: "coulombs per meter squared",
+        label: "coulombs/meter^2",
     },
     UnitType {
-        literal_suffix: "",
-        suffix: "F/m",
         name: "Permittivity",
-        label: "farads per meter",
+        label: "farads/meter",
     },
     UnitType {
-        literal_suffix: "",
-        suffix: "H/m",
         name: "Permeability",
-        label: "henry per meter",
+        label: "henries/meter",
     },
     UnitType {
-        literal_suffix: "",
-        suffix: "J/mol",
         name: "MolarEnergy",
-        label: "joules per mole",
+        label: "joules/mole",
     },
     UnitType {
-        literal_suffix: "",
-        suffix: "J/(mol*K)",
         name: "MolarHeatCapacity",
-        label: "joules per mole kelvin",
+        label: "joules/(mole*kelvin)",
     },
     UnitType {
-        literal_suffix: "",
-        suffix: "W/(m^2*sr)",
         name: "Radiance",
-        label: "watts per meter squared steradian",
+        label: "watts/(meter^2*steradian)",
     },
     UnitType {
-        literal_suffix: "",
-        suffix: "kg*K",
         name: "MassThermodynamicTemperature",
-        label: "kilograms kelvin",
+        label: "kilograms*kelvin",
     },
     UnitType {
-        literal_suffix: "",
-        suffix: "m*K",
         name: "LengthThermodynamicTemperature",
-        label: "meters kelvin",
+        label: "meters*kelvin",
     },
     UnitType {
-        literal_suffix: "",
-        suffix: "mol*K",
         name: "AmountOfSubstanceThermodynamicTemperature",
-        label: "moles kelvin",
+        label: "moles*kelvin",
     },
     UnitType {
-        literal_suffix: "",
-        suffix: "m^2*sr",
         name: "AreaSolidAngle",
-        label: "meters squared steradian",
+        label: "meters^2/steradian",
     },
     UnitType {
-        literal_suffix: "",
-        suffix: "1/mol",
         name: "PerAmountOfSubstance",
-        label: "per mole",
+        label: "1/mole",
     },
     UnitType {
-        literal_suffix: "",
-        suffix: "J/Hz",
         name: "EnergyPerFrequency",
-        label: "joules per hertz",
+        label: "joules/hertz",
     },
     UnitType {
-        literal_suffix: "",
-        suffix: "kg/m^3",
         name: "MassDensity",
-        label: "kilograms per meter cubed",
+        label: "kilograms/meter^3",
+    },
+    // Imperial units
+    UnitType {
+        name: "Feet",
+        label: "feet",
+    },
+    UnitType {
+        name: "Degrees",
+        label: "degrees",
+    },
+    UnitType {
+        name: "DegreesPerSecond",
+        label: "degrees/second",
+    },
+    UnitType {
+        name: "DegreesPerSecondSquared",
+        label: "degrees/second^2",
+    },
+    UnitType {
+        name: "DegreesFahrenheit",
+        label: "degreesF",
+    },
+    UnitType {
+        name: "DegreesRankine",
+        label: "degreesR",
+    },
+    UnitType {
+        name: "Revolutions",
+        label: "revolutions",
+    },
+    UnitType {
+        name: "RevolutionsPerMinute",
+        label: "rpm",
+    },
+    UnitType {
+        name: "NauticalMiles",
+        label: "nauticalmiles",
+    },
+    UnitType {
+        name: "Knots",
+        label: "knots",
+    },
+    UnitType {
+        name: "FeetPerSecond",
+        label: "feet/second",
+    },
+    UnitType {
+        name: "FeetPerSecondSquared",
+        label: "feet/second^2",
+    },
+    UnitType {
+        name: "FeetPerMinute",
+        label: "feet/minute",
+    },
+    UnitType {
+        name: "G",
+        label: "g",
+    },
+    UnitType {
+        name: "PoundsForce",
+        label: "lbsforce",
+    },
+    UnitType {
+        name: "Pounds",
+        label: "lbs",
+    },
+    UnitType {
+        name: "PoundsPerSquareInch",
+        label: "psi",
+    },
+    UnitType {
+        name: "PoundsPerSquareFoot",
+        label: "psf",
+    },
+    UnitType {
+        name: "InchesMercury",
+        label: "inHg",
+    },
+    UnitType {
+        name: "FootPounds",
+        label: "ftlbs",
     },
 ];
 
@@ -856,21 +803,67 @@ fn impl_display_macro(ast: &syn::DeriveInput) -> TokenStream {
     let name_string = name.to_string();
     let current_unit = find_unit(name_string);
     let label: &'static str = current_unit.label;
-    let suffix: &'static str = current_unit.suffix;
-    let literal_suffix = current_unit.literal_suffix;
-    let gen = quote::quote! {
+
+    let generate = quote::quote! {
 
       #[cfg(feature = "use_defmt")]
       impl defmt::Format for #name {
         fn format(&self, f: defmt::Formatter<'_>) {
-          defmt::write!(f, "{} {}", self.0, #label);
+          defmt::write!(f, "{} {}", self.native, #label);
         }
+      }
+
+      #[cfg(feature = "std")]
+      impl serde::Serialize for #name {
+          fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+          where
+              S: serde::Serializer,
+          {
+              // Format however you want
+              let s = std::format!("{}_{}", self.native, #label);
+              serializer.serialize_str(&s)
+          }
+      }
+
+      #[cfg(feature = "std")]
+      impl<'de> serde::Deserialize<'de> for #name {
+          fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+          where
+              D: serde::Deserializer<'de>,
+          {
+              struct UnitsVisitor;
+
+              impl<'de> serde::de::Visitor<'de> for UnitsVisitor {
+                  type Value = #name;
+
+                  fn expecting(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+                      f.write_str(format!("a string like `10.0_{}`", #label).as_str())
+                  }
+
+                  fn visit_str<E>(self, v: &str) -> Result<Self::Value, E>
+                  where
+                      E: serde::de::Error,
+                  {
+                      // Expect format "<value>_meters"
+                      if let Some((value_str, #label)) = v.rsplit_once('_') {
+                          let native: crate::NativeType = value_str
+                              .parse()
+                              .map_err(|_| E::custom(format!("invalid float in {}", #label).as_str()))?;
+                          return Ok(#name { native });
+                      }
+
+                      Err(E::custom(format!("expected format `<float>_{}`", #label).as_str()))
+                  }
+              }
+
+              deserializer.deserialize_str(UnitsVisitor)
+          }
       }
 
       #[cfg(feature = "std")]
       impl std::fmt::Display for #name {
         fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-          write!(f, "{} {}", self.0, #label)
+          write!(f, "{} {}", self.native, #label)
         }
       }
 
@@ -880,43 +873,9 @@ fn impl_display_macro(ast: &syn::DeriveInput) -> TokenStream {
           f.debug_struct(stringify!(#name))
               .field("value", &self.to_string())
               .field("label", &#label)
-              .field("suffix", &#suffix)
-              .field("literal_suffix", &#literal_suffix)
               .finish()
         }
       }
     };
-    gen.into()
-}
-
-// "visitor" that visits every node in the syntax tree
-// we add our own behavior to replace custom literals with proper Rust code
-struct LiteralReplacer;
-
-impl VisitMut for LiteralReplacer {
-    fn visit_expr_mut(&mut self, i: &mut Expr) {
-        if let Expr::Lit(ExprLit { lit, .. }) = i {
-            match lit {
-                Lit::Int(lit) => {
-                    // get literal suffix
-                    // get literal without suffix
-                    let lit_no_suffix = LitInt::new(lit.base10_digits(), lit.span());
-                    for unit in UNITS {
-                        let value = process_unit(lit.suffix(), &lit_no_suffix, &unit);
-                        match value {
-                            Some(matched_value) => {
-                                *i = matched_value;
-                                break;
-                            }
-                            None => (),
-                        }
-                    }
-                }
-                _ => (), // other literal type we won't modify
-            }
-        } else {
-            // not a literal, use default visitor method
-            visit_mut::visit_expr_mut(self, i)
-        }
-    }
+    generate.into()
 }
