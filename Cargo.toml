@@ -1,4 +1,4 @@
 [workspace]
 resolver = "2"
 
-members = ["units-si", "units"]
+members = ["sci-units-proc-macro", "sci-units"]

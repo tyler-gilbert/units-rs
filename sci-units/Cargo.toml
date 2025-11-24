@@ -1,21 +1,22 @@
 [package]
-name = "units"
-version = "0.4.0"
+name = "sci-units"
+version = "0.5.0"
 edition = "2024"
+license = "MIT"
+description = "A library for managing scientific units."
+repository = "https://github.com/tyler-gilbert/units-rs"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 [lib]
-name = "units"
-path = "src/lib.rs"
 
 [dependencies]
-units-si = { path = "../units-si" }
 libm = { version = "0.2" }
 defmt = { version = "0.3", optional = true }
 bincode = { version = "2.0.1", features = [
     "derive",
 ], default-features = false }
 serde = { version = "1.0", optional = true }
+sci-units-proc-macro = { path = "../sci-units-proc-macro" }
 
 [dev-dependencies]
 serde_json = "1"

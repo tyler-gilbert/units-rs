@@ -7,8 +7,9 @@ pub mod imperial;
 mod test;
 
 use bincode::{Decode, Encode};
-use units_si::{
-    SiAddSubtract, SiDisplay, SiDivide, SiInvert, SiMultiply, SiMultiplyDivideScalar, SiSquare,
+use sci_units_proc_macro::{
+    SiAddSubtract, SiConvert, SiDisplay, SiDivide, SiInvert, SiMultiply, SiMultiplyDivideScalar,
+    SiSquare,
 };
 
 // These are used with the macros in units-proc-macro
@@ -17,7 +18,19 @@ pub type NativeType = f32;
 #[cfg(not(feature = "f32"))]
 pub type NativeType = f64;
 
+#[cfg(feature = "f32")]
+const PI: crate::NativeType = core::f32::consts::PI;
+#[cfg(not(feature = "f32"))]
+const PI: crate::NativeType = core::f64::consts::PI;
+
+#[cfg(feature = "f32")]
+pub const SIGNIFICANT_FIGURES: i32 = 6;
+
+#[cfg(not(feature = "f32"))]
 pub const SIGNIFICANT_FIGURES: i32 = 12;
+
+const ZERO_OFFSET: NativeType = 0.0;
+const LITERS_PER_METER_CUBED: NativeType = 1_000.0;
 
 #[derive(Copy, Clone, Decode, Encode)]
 pub enum DecibelType {
@@ -25,9 +38,9 @@ pub enum DecibelType {
     Signal,
 }
 
-impl Into<NativeType> for DecibelType {
-    fn into(self) -> NativeType {
-        match self {
+impl From<DecibelType> for NativeType {
+    fn from(val: DecibelType) -> Self {
+        match val {
             DecibelType::Power => 10.0,
             DecibelType::Signal => 20.0,
         }
@@ -117,8 +130,8 @@ impl<UnitType: Into<NativeType> + Copy + core::ops::Mul<Scalar, Output = UnitTyp
 }
 
 impl<
-        UnitType: Into<NativeType> + From<NativeType> + Copy + core::ops::Mul<Scalar, Output = UnitType>,
-    > core::ops::Mul<UnitType> for Decibel<UnitType>
+    UnitType: Into<NativeType> + From<NativeType> + Copy + core::ops::Mul<Scalar, Output = UnitType>,
+> core::ops::Mul<UnitType> for Decibel<UnitType>
 {
     type Output = UnitType;
 
@@ -199,6 +212,14 @@ pub struct Area {
 )]
 #[parameters(lhs_mult = Area, rhs_mult = Length)]
 pub struct Volume {
+    native: NativeType,
+}
+
+#[derive(
+    Copy, Clone, SiAddSubtract, SiMultiplyDivideScalar, SiDisplay, SiConvert, Decode, Encode,
+)]
+#[parameters(multiplier = LITERS_PER_METER_CUBED, offset = ZERO_OFFSET, into = Volume)]
+pub struct Liters {
     native: NativeType,
 }
 
@@ -640,40 +661,75 @@ pub struct ThermalConductivity {
 pub mod constants {
     use super::*;
 
+    #[cfg(feature = "f32")]
+    mod sealed {
+        use crate::NativeType;
+
+        pub const PLANK_H: NativeType = 6.62607E-34;
+        pub const ELEMENTARY_CHARGE: NativeType = 1.6021766E-19;
+        pub const AVOGADRO: NativeType = 6.0221408E23;
+        pub const ELECTRON_MASS: NativeType = 9.109384E-31;
+        pub const PROTON_MASS: NativeType = 1.6726_22E-27;
+        pub const NEUTRON_MASS: NativeType = 1.674_927_5E-27;
+        pub const MUON_MASS: NativeType = 1.883_531_6E-28;
+        pub const Z_0: NativeType = 376.730_31;
+        pub const WIEN_LAMBDA: NativeType = 2.897_772E-3;
+        pub const WIEN_ENTROPY: NativeType = 3.002_916E-3;
+    }
+
+    #[cfg(not(feature = "f32"))]
+    mod sealed {
+        use crate::NativeType;
+
+        pub const PLANK_H: NativeType = 6.62607015E-34;
+        pub const ELEMENTARY_CHARGE: NativeType = 1.602176634E-19;
+        pub const AVOGADRO: NativeType = 6.02214076E23;
+        pub const ELECTRON_MASS: NativeType = 9.1093837015E-31;
+        pub const PROTON_MASS: NativeType = 1.67262192369E-27;
+        pub const NEUTRON_MASS: NativeType = 1.67492749804E-27;
+        pub const MUON_MASS: NativeType = 1.883531627E-28;
+        pub const Z_0: NativeType = 376.730313668;
+        pub const WIEN_LAMBDA: NativeType = 2.897771955E-3;
+        pub const WIEN_ENTROPY: NativeType = 3.002916077E-3;
+    }
+
+    /// Speed of light in a vacuum
+    pub const pi: PlaneAngle = PlaneAngle::new(PI);
+
     /// Speed of light in a vacuum
     pub const c: Velocity = Velocity::new(299_792_458.0 as NativeType);
     /// Planck constant
-    pub const h: EnergyPerFrequency = EnergyPerFrequency::new(6.62607015E-34 as NativeType);
+    pub const h: EnergyPerFrequency = EnergyPerFrequency::new(sealed::PLANK_H);
     /// Sound pressure level of 0 dB
     pub const p0: Pressure = Pressure::new(2.0E-5 as NativeType);
     /// Elementary charge
-    pub const e: ElectricCharge = ElectricCharge::new(1.602176634E-19 as NativeType);
+    pub const e: ElectricCharge = ElectricCharge::new(sealed::ELEMENTARY_CHARGE);
     /// Boltzmann constant
     pub const k: HeatCapacity = HeatCapacity::new(1.380649E-23 as NativeType);
     /// Avogadro constant
-    pub const N_A: PerAmountOfSubstance = PerAmountOfSubstance::new(6.02214076E23 as NativeType);
+    pub const N_A: PerAmountOfSubstance = PerAmountOfSubstance::new(sealed::AVOGADRO);
     /// the luminous efficacy of monochromatic radiation of frequency 540 × 1012 hertz
     pub const K_cd: LuminousFlux = LuminousFlux::new(683.0 as NativeType);
     /// electron mass
-    pub const m_e: Mass = Mass::new(9.1093837015E-31 as NativeType);
+    pub const m_e: Mass = Mass::new(sealed::ELECTRON_MASS);
     /// Proton mass
-    pub const m_p: Mass = Mass::new(1.67262192369E-27 as NativeType);
+    pub const m_p: Mass = Mass::new(sealed::PROTON_MASS);
     /// neutron mass
-    pub const m_n: Mass = Mass::new(1.67492749804E-27 as NativeType);
+    pub const m_n: Mass = Mass::new(sealed::NEUTRON_MASS);
     /// muon mass
-    pub const m_mu: Mass = Mass::new(1.883531627E-28 as NativeType);
+    pub const m_mu: Mass = Mass::new(sealed::MUON_MASS);
     /// tau mass
     pub const m_tau: Mass = Mass::new(3.16754E-27 as NativeType);
     /// gravity
     pub const g: Acceleration = Acceleration::new(9.80665 as NativeType);
     /// characteristic impedance of vacuum
-    pub const Z_0: ElectricResistance = ElectricResistance::new(376.730313668 as NativeType);
+    pub const Z_0: ElectricResistance = ElectricResistance::new(sealed::Z_0);
     /// Wien wavelength displacement law constant
     pub const b: LengthThermodynamicTemperature =
-        LengthThermodynamicTemperature::new(2.897771955E-3 as NativeType);
+        LengthThermodynamicTemperature::new(sealed::WIEN_LAMBDA);
     /// Wien entropy displacement law constant
     pub const b_entropy: LengthThermodynamicTemperature =
-        LengthThermodynamicTemperature::new(3.002916077E-3 as NativeType);
+        LengthThermodynamicTemperature::new(sealed::WIEN_ENTROPY);
 }
 
 #[cfg(feature = "std")]
@@ -967,6 +1023,12 @@ mod tests {
     );
 
     #[test]
+    fn convert_operations() {
+        let kiloliter = Liters::new(1000.0);
+        assert_eq!(Volume::new(1.0), kiloliter.into());
+    }
+
+    #[test]
     fn scalar_operations() {
         assert_eq!(Power::new(1.0) * Scalar::new(1000.), Power::new(1000.));
         let db = Decibel::new_from_raw(Power::new(5.), Power::new(1.), DecibelType::Power);
@@ -981,22 +1043,20 @@ mod tests {
 
     #[test]
     fn readme_test() {
-        let length = Length::new(32.);
+        let length = Length::new(32.0);
         let duration = Time::new(0.01);
         let velocity = length / duration;
         println!("Velocity: {}", velocity);
 
-        let current = ElectricCurrent::new(10.);
-        let resistance = ElectricResistance::new(100.);
-        let voltage = current * resistance;
+        let voltage = ElectricCurrent::new(10.0) * ElectricResistance::new(100.0);
         println!("Voltage: {}", voltage);
 
         //doing and ADC conversion
-        let adc_value = 100_u16;
+        let adc_value = Scalar::new(100.0);
         let volts_per_bit = ElectricPotential::new(0.004);
-        let v_out = Scalar::from(adc_value as NativeType) * volts_per_bit;
-        let r_top = ElectricResistance::new(4000.);
-        let r_bottom = ElectricResistance::new(1000.);
+        let v_out = adc_value * volts_per_bit;
+        let r_top = ElectricResistance::new(4000.0);
+        let r_bottom = ElectricResistance::new(1000.0);
         //calculate the input voltage before a voltage divider
         let sensor_voltage = v_out * ((r_top + r_bottom) / r_bottom);
         println!("Sensor Voltage: {}", sensor_voltage);

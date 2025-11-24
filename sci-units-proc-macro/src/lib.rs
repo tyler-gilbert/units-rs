@@ -36,9 +36,7 @@ impl Parse for Parameters {
             let key: syn::Ident = content.parse()?;
             content.parse::<Token![=]>()?;
             let value = content.parse()?;
-            result
-                .parameters
-                .push((String::from(key.to_string()), value));
+            result.parameters.push((key.to_string(), value));
 
             match content.parse::<Token![,]>() {
                 Err(_) => break,
@@ -213,8 +211,7 @@ fn get_parameters(ast: &DeriveInput, expect: &'static str) -> Parameters {
     let attribute = ast
         .attrs
         .iter()
-        .filter(|a| a.path.segments.len() == 1 && a.path.segments[0].ident == "parameters")
-        .nth(0)
+        .find(|a| a.path.segments.len() == 1 && a.path.segments[0].ident == "parameters")
         .expect(expect);
 
     syn::parse2(attribute.tokens.clone()).expect("Invalid parameters attribute!")
@@ -512,7 +509,11 @@ const UNITS: &[UnitType] = &[
     },
     UnitType {
         name: "Volume",
-        label: "meters cubed",
+        label: "meters^3",
+    },
+    UnitType {
+        name: "Liters",
+        label: "liters",
     },
     UnitType {
         name: "Velocity",
@@ -712,6 +713,38 @@ const UNITS: &[UnitType] = &[
         label: "feet",
     },
     UnitType {
+        name: "Yard",
+        label: "yards",
+    },
+    UnitType {
+        name: "Inch",
+        label: "inches",
+    },
+    UnitType {
+        name: "Miles",
+        label: "miles",
+    },
+    UnitType {
+        name: "Acres",
+        label: "acres",
+    },
+    UnitType {
+        name: "SquareMiles",
+        label: "squaremiles",
+    },
+    UnitType {
+        name: "Pints",
+        label: "pt",
+    },
+    UnitType {
+        name: "Quarts",
+        label: "qt",
+    },
+    UnitType {
+        name: "Gallons",
+        label: "gal",
+    },
+    UnitType {
         name: "Degrees",
         label: "degrees",
     },
@@ -772,6 +805,10 @@ const UNITS: &[UnitType] = &[
         label: "lbs",
     },
     UnitType {
+        name: "Ounces",
+        label: "oz",
+    },
+    UnitType {
         name: "PoundsPerSquareInch",
         label: "psi",
     },
@@ -792,7 +829,7 @@ const UNITS: &[UnitType] = &[
 fn find_unit(name: String) -> &'static UnitType {
     for unit in UNITS {
         if name == unit.name {
-            return &unit;
+            return unit;
         }
     }
     panic!("no unit named {} was found", name);

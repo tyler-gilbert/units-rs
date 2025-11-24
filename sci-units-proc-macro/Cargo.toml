@@ -1,13 +1,14 @@
 [package]
-name = "units-si"
-version = "0.4.0"
+name = "sci-units-proc-macro"
+version = "0.5.0"
 edition = "2024"
+license = "MIT"
+description = "Procedural macros for use with sci-units."
+repository = "https://github.com/tyler-gilbert/units-rs"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 [lib]
 proc-macro = true
-name = "units_si"
-path = "src/lib.rs"
 
 [dependencies]
 syn = { version = "1.0", features = ["visit-mut"] }
